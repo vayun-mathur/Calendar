@@ -36,15 +36,15 @@ import androidx.core.graphics.toColor
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.ContactViewModel
-import com.vayunmathur.calendar.EditEventPage
 import com.vayunmathur.calendar.R
+import com.vayunmathur.calendar.Route
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.format
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventScreen(viewModel: ContactViewModel, eventId: Long, backStack: NavBackStack<NavKey>) {
+fun EventScreen(viewModel: ContactViewModel, eventId: Long, backStack: NavBackStack<Route>) {
     val events by viewModel.events.collectAsState()
     val calendars by viewModel.calendars.collectAsState()
 
@@ -69,7 +69,7 @@ fun EventScreen(viewModel: ContactViewModel, eventId: Long, backStack: NavBackSt
         }, actions = {
             if(isEditable) {
                 IconButton({
-                    backStack.add(EditEventPage(event.id))
+                    backStack.add(Route.EditEvent(event.id))
                 }) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit")
                 }

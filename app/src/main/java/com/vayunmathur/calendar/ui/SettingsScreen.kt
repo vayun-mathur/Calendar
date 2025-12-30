@@ -49,10 +49,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.ContactViewModel
+import com.vayunmathur.calendar.Route
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: ContactViewModel, backStack: NavBackStack<NavKey>) {
+fun SettingsScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
     val calendars by viewModel.calendars.collectAsState()
     val visibility by viewModel.calendarVisibility.collectAsState()
 

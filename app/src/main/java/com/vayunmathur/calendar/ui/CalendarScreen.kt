@@ -60,15 +60,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.zIndex
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.Calendar
 import com.vayunmathur.calendar.ContactViewModel
-import com.vayunmathur.calendar.EditEventPage
 import com.vayunmathur.calendar.Event
-import com.vayunmathur.calendar.EventPage
-import com.vayunmathur.calendar.SettingsPage
+import com.vayunmathur.calendar.LocalNavResultRegistry
+import com.vayunmathur.calendar.ResultEffect
+import com.vayunmathur.calendar.Route
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -82,9 +84,11 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 
+
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
-fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<NavKey>) {
+fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
     val events by viewModel.events.collectAsState()
     val calendarsList by viewModel.calendars.collectAsState()
     val calendars = calendarsList.associateBy { it.id }
@@ -99,7 +103,9 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<NavKey>)
     // shared vertical scroll so hour labels and grid scroll together
     val verticalState = rememberScrollState()
 
-    var showDatePicker by remember { mutableStateOf(false) }
+    ResultEffect<LocalDate>("GotoDate") { result ->
+        dateViewing = result
+    }
 
     Scaffold(
         topBar = {
@@ -110,13 +116,13 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<NavKey>)
                     val baseSunday = if (daysToSubtract == 0) dateViewing else dateViewing.minus(DatePeriod(days = daysToSubtract))
                     val visibleSunday = baseSunday.plus(DatePeriod(days = weekOffset * 7))
                     val mon = MonthNames.ENGLISH_ABBREVIATED.names[visibleSunday.month.number - 1]
-                    Row(Modifier.clickable { showDatePicker = true }, verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.clickable { backStack.add(Route.Calendar.GotoDialog(dateViewing.toEpochDays())) }, verticalAlignment = Alignment.CenterVertically) {
                         Text("$mon ${visibleSunday.year}", fontWeight = FontWeight.Bold)
                         Icon(Icons.Default.ArrowDropDown, null)
                     }
                 },
                 actions = {
-                    IconButton(onClick = { backStack.add(SettingsPage) }) {
+                    IconButton(onClick = { backStack.add(Route.Settings) }) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 }
@@ -124,7 +130,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<NavKey>)
         },
         contentWindowInsets = WindowInsets(),
         floatingActionButton = {
-            FloatingActionButton(onClick = { backStack.add(EditEventPage(null)) }) {
+            FloatingActionButton(onClick = { backStack.add(Route.EditEvent(null)) }) {
                 Icon(Icons.Default.Add, contentDescription = "Add")
             }
         },
@@ -211,36 +217,41 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<NavKey>)
                     Column(modifier = Modifier.fillMaxSize()) {
                         val density = LocalDensity.current
                         WeekHeader(weekDays)
-                        AllDayRow(allDayByDate, calendars, weekDays) { id -> backStack.add(EventPage(id)) }
+                        AllDayRow(allDayByDate, calendars, weekDays) { id -> backStack.add(Route.Event(id)) }
                         Spacer(Modifier.onGloballyPositioned{
                             yOffset = with(density) { it.positionInParent().y.toDp() }
                         })
-                        HourlyGrid(timedByDateHour, calendars, weekDays, verticalState, onEventClick = { id -> backStack.add(EventPage(id)) })
+                        HourlyGrid(timedByDateHour, calendars, weekDays, verticalState, onEventClick = { id -> backStack.add(Route.Event(id)) })
                     }
                 }
             }
         }
     }
+}
 
-    if(showDatePicker) {
-        val state = rememberDatePickerState(dateViewing.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds())
-        DatePickerDialog({
-            showDatePicker = false
-        }, {
-            Button({
-                dateViewing = Instant.fromEpochMilliseconds(state.selectedDateMillis!!).toLocalDateTime(TimeZone.UTC).date
-                showDatePicker = false
-            }, enabled = state.selectedDateMillis != null) {
-                Text("Go to date")
-            }
-        }, dismissButton = {
-            Button({
-                showDatePicker = false
-            }) {
-                Text("Cancel")
-            }
-        }) {
+@Composable
+fun CalendarSetDateDialog(backStack: NavBackStack<Route>, dateViewing: LocalDate) {
+    val registry = LocalNavResultRegistry.current
+    val state = rememberDatePickerState(dateViewing.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds())
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+        Column(Modifier.padding(8.dp)) {
             DatePicker(state)
+            Row(Modifier.align(Alignment.End)) {
+                Button({
+                    backStack.removeAt(backStack.lastIndex)
+                }) {
+                    Text("Cancel")
+                }
+                Spacer(Modifier.width(8.dp))
+                Button({
+                    val result = Instant.fromEpochMilliseconds(state.selectedDateMillis!!)
+                        .toLocalDateTime(TimeZone.UTC).date
+                    registry.dispatchResult("GotoDate", result)
+                    backStack.removeAt(backStack.lastIndex)
+                }, enabled = state.selectedDateMillis != null) {
+                    Text("Go to date")
+                }
+            }
         }
     }
 }

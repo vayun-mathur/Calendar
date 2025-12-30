@@ -28,16 +28,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.vayunmathur.calendar.ui.CalendarScreen
+import com.vayunmathur.calendar.ui.CalendarSetDateDialog
 import com.vayunmathur.calendar.ui.EditEventScreen
 import com.vayunmathur.calendar.ui.EventScreen
 import com.vayunmathur.calendar.ui.SettingsScreen
 import com.vayunmathur.calendar.ui.theme.CalendarTheme
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import androidx.compose.runtime.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,28 +93,62 @@ fun NoPermissionsScreen(permissions: Array<String>, setHasPermissions: (Boolean)
     }
 }
 
-@Serializable
-data object CalendarPage: NavKey
+sealed interface Route: NavKey {
+    @Serializable
+    data object Calendar: Route {
+        @Serializable
+        data class GotoDialog(val dateViewing: Long): Route
+    }
 
-@Serializable
-data object SettingsPage: NavKey
+    @Serializable
+    data object Settings: Route
 
-@Serializable
-data class EventPage(val id: Long): NavKey
+    @Serializable
+    data class Event(val id: Long): Route
 
-@Serializable
-data class EditEventPage(val id: Long?): NavKey
+    @Serializable
+    data class EditEvent(val id: Long?): Route
+}
+
+// The Registry that holds the events
+class NavResultRegistry {
+    private val _results = Channel<Pair<String, Any>>(Channel.BUFFERED)
+    val results = _results.receiveAsFlow()
+
+    fun dispatchResult(key: String, result: Any) {
+        _results.trySend(key to result)
+    }
+}
+
+// The Composable helper (The "ResultEffect" you saw)
+@Composable
+inline fun <reified T> ResultEffect(key: String, crossinline onResult: (T) -> Unit) {
+    val registry = LocalNavResultRegistry.current
+    LaunchedEffect(registry) {
+        registry.results.collect { (k, result) ->
+            if (k == key && result is T) {
+                onResult(result)
+            }
+        }
+    }
+}
+
+// Make it available everywhere via CompositionLocal
+val LocalNavResultRegistry = staticCompositionLocalOf<NavResultRegistry> {
+    error("No NavResultRegistry provided")
+}
 
 @Composable
 fun Navigation(id: Long?) {
     val viewModel: ContactViewModel = viewModel()
-    val backStack = rememberNavBackStack(*(if(id == null) arrayOf(CalendarPage) else arrayOf(CalendarPage, EventPage(id))))
+    val resultRegistry = remember { NavResultRegistry() }
+    val backStack = rememberNavBackStack(*(if(id == null) arrayOf(Route.Calendar) else arrayOf(Route.Calendar, Route.Event(id)))) as NavBackStack<Route>
     LaunchedEffect(id) {
         if(id != null) {
             while(backStack.size > 1) {
                 backStack.removeAt(backStack.lastIndex)
             }
-            backStack.add(EventPage(id))
+            backStack.add(Route.Event(id))
         } else {
             while(backStack.size > 1) {
                 backStack.removeAt(backStack.lastIndex)
@@ -116,20 +157,27 @@ fun Navigation(id: Long?) {
     }
     Scaffold(contentWindowInsets = WindowInsets.displayCutout
     ) { paddingValues ->
-        NavDisplay(modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues),
-            backStack = backStack, entryProvider = entryProvider {
-                entry<CalendarPage> {
-                    CalendarScreen(viewModel, backStack)
-                }
-                entry<EventPage> { key ->
-                    EventScreen(viewModel, key.id, backStack)
-                }
-                entry<SettingsPage> {
-                    SettingsScreen(viewModel, backStack)
-                }
-                entry<EditEventPage> { key ->
-                    EditEventScreen(viewModel, key.id, backStack)
-                }
-            })
+        CompositionLocalProvider(LocalNavResultRegistry provides resultRegistry) {
+            NavDisplay(
+                modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues),
+                sceneStrategy = DialogSceneStrategy(),
+                backStack = backStack, entryProvider = entryProvider {
+                    entry<Route.Calendar> {
+                        CalendarScreen(viewModel, backStack)
+                    }
+                    entry<Route.Event> { key ->
+                        EventScreen(viewModel, key.id, backStack)
+                    }
+                    entry<Route.Settings> {
+                        SettingsScreen(viewModel, backStack)
+                    }
+                    entry<Route.EditEvent> { key ->
+                        EditEventScreen(viewModel, key.id, backStack)
+                    }
+                    entry<Route.Calendar.GotoDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+                        CalendarSetDateDialog(backStack, LocalDate.fromEpochDays(key.dateViewing))
+                    }
+                })
+        }
     }
 }

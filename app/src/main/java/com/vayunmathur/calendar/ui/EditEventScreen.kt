@@ -48,6 +48,7 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.R
+import com.vayunmathur.calendar.Route
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -63,7 +64,7 @@ import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavBackStack<NavKey>) {
+fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavBackStack<Route>) {
     val events by viewModel.events.collectAsState()
     val calendars by viewModel.calendars.collectAsState()
 
