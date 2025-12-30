@@ -9,9 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -25,26 +22,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.scene.DialogSceneStrategy
-import androidx.navigation3.ui.NavDisplay
 import com.vayunmathur.calendar.ui.CalendarScreen
 import com.vayunmathur.calendar.ui.CalendarSetDateDialog
 import com.vayunmathur.calendar.ui.EditEventScreen
 import com.vayunmathur.calendar.ui.EventScreen
+import com.vayunmathur.calendar.ui.SettingsAddCalendarDialog
+import com.vayunmathur.calendar.ui.SettingsChangeColorDialog
+import com.vayunmathur.calendar.ui.SettingsDeleteCalendarDialog
+import com.vayunmathur.calendar.ui.SettingsRenameCalendarDialog
 import com.vayunmathur.calendar.ui.SettingsScreen
 import com.vayunmathur.calendar.ui.theme.CalendarTheme
+import com.vayunmathur.calendar.vutil.MainNavigation
+import com.vayunmathur.calendar.vutil.rememberNavBackStack
+import com.vayunmathur.calendar.vutil.reset
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
-import androidx.compose.runtime.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.receiveAsFlow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,7 +97,19 @@ sealed interface Route: NavKey {
     }
 
     @Serializable
-    data object Settings: Route
+    data object Settings: Route {
+        @Serializable
+        data class ChangeColor(val id: Long): Route
+
+        @Serializable
+        data class AddCalendar(val placeholder: Int = 0): Route
+
+        @Serializable
+        data class RenameCalendar(val id: Long): Route
+
+        @Serializable
+        data class DeleteCalendar(val id: Long): Route
+    }
 
     @Serializable
     data class Event(val id: Long): Route
@@ -110,74 +118,52 @@ sealed interface Route: NavKey {
     data class EditEvent(val id: Long?): Route
 }
 
-// The Registry that holds the events
-class NavResultRegistry {
-    private val _results = Channel<Pair<String, Any>>(Channel.BUFFERED)
-    val results = _results.receiveAsFlow()
-
-    fun dispatchResult(key: String, result: Any) {
-        _results.trySend(key to result)
-    }
-}
-
-// The Composable helper (The "ResultEffect" you saw)
-@Composable
-inline fun <reified T> ResultEffect(key: String, crossinline onResult: (T) -> Unit) {
-    val registry = LocalNavResultRegistry.current
-    LaunchedEffect(registry) {
-        registry.results.collect { (k, result) ->
-            if (k == key && result is T) {
-                onResult(result)
-            }
-        }
-    }
-}
-
-// Make it available everywhere via CompositionLocal
-val LocalNavResultRegistry = staticCompositionLocalOf<NavResultRegistry> {
-    error("No NavResultRegistry provided")
-}
-
 @Composable
 fun Navigation(id: Long?) {
     val viewModel: ContactViewModel = viewModel()
-    val resultRegistry = remember { NavResultRegistry() }
-    val backStack = rememberNavBackStack(*(if(id == null) arrayOf(Route.Calendar) else arrayOf(Route.Calendar, Route.Event(id)))) as NavBackStack<Route>
+    val backStack = rememberNavBackStack(listOfNotNull(Route.Calendar, id?.let {Route.Event(it)}))
     LaunchedEffect(id) {
         if(id != null) {
-            while(backStack.size > 1) {
-                backStack.removeAt(backStack.lastIndex)
-            }
-            backStack.add(Route.Event(id))
+            backStack.reset(Route.Calendar, Route.Event(id))
         } else {
-            while(backStack.size > 1) {
-                backStack.removeAt(backStack.lastIndex)
-            }
+            backStack.reset(Route.Calendar)
         }
     }
-    Scaffold(contentWindowInsets = WindowInsets.displayCutout
-    ) { paddingValues ->
-        CompositionLocalProvider(LocalNavResultRegistry provides resultRegistry) {
-            NavDisplay(
-                modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues),
-                sceneStrategy = DialogSceneStrategy(),
-                backStack = backStack, entryProvider = entryProvider {
-                    entry<Route.Calendar> {
-                        CalendarScreen(viewModel, backStack)
-                    }
-                    entry<Route.Event> { key ->
-                        EventScreen(viewModel, key.id, backStack)
-                    }
-                    entry<Route.Settings> {
-                        SettingsScreen(viewModel, backStack)
-                    }
-                    entry<Route.EditEvent> { key ->
-                        EditEventScreen(viewModel, key.id, backStack)
-                    }
-                    entry<Route.Calendar.GotoDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
-                        CalendarSetDateDialog(backStack, LocalDate.fromEpochDays(key.dateViewing))
-                    }
-                })
+
+    MainNavigation(backStack) {
+
+        entry<Route.Calendar> {
+            CalendarScreen(viewModel, backStack)
+        }
+        entry<Route.Event> { key ->
+            EventScreen(viewModel, key.id, backStack)
+        }
+        entry<Route.Settings> {
+            SettingsScreen(viewModel, backStack)
+        }
+        entry<Route.EditEvent> { key ->
+            EditEventScreen(viewModel, key.id, backStack)
+        }
+
+        entry<Route.Calendar.GotoDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+            CalendarSetDateDialog(backStack, LocalDate.fromEpochDays(key.dateViewing))
+        }
+
+        // Settings-related dialog entries
+        entry<Route.Settings.ChangeColor>(metadata = DialogSceneStrategy.dialog()) { key ->
+            SettingsChangeColorDialog(viewModel, backStack, key.id)
+        }
+
+        entry<Route.Settings.AddCalendar>(metadata = DialogSceneStrategy.dialog()) { _ ->
+            SettingsAddCalendarDialog(viewModel, backStack)
+        }
+
+        entry<Route.Settings.RenameCalendar>(metadata = DialogSceneStrategy.dialog()) { key ->
+            SettingsRenameCalendarDialog(viewModel, backStack, key.id)
+        }
+
+        entry<Route.Settings.DeleteCalendar>(metadata = DialogSceneStrategy.dialog()) { key ->
+            SettingsDeleteCalendarDialog(viewModel, backStack, key.id)
         }
     }
 }

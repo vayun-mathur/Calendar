@@ -4,25 +4,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -32,12 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColor
 import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
+import com.vayunmathur.calendar.vutil.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.format
@@ -62,7 +56,7 @@ fun EventScreen(viewModel: ContactViewModel, eventId: Long, backStack: NavBackSt
     Scaffold(topBar = {
         TopAppBar({}, navigationIcon = {
             IconButton({
-                backStack.removeAt(backStack.lastIndex)
+                backStack.pop()
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Save")
             }
@@ -75,7 +69,7 @@ fun EventScreen(viewModel: ContactViewModel, eventId: Long, backStack: NavBackSt
                 }
                 IconButton({
                     viewModel.deleteEvent(event.id!!)
-                    backStack.removeAt(backStack.lastIndex)
+                    backStack.pop()
                 }) {
                     Icon(Icons.Default.Delete, contentDescription = "Edit")
                 }

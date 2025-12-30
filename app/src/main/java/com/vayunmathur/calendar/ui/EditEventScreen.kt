@@ -17,22 +17,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -45,10 +40,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
+import com.vayunmathur.calendar.vutil.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -60,7 +55,6 @@ import kotlinx.datetime.format.Padding
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,10 +78,6 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
     var endTime by remember { mutableStateOf(event?.endDateTime?.time ?: now) }
     var timezone by remember { mutableStateOf(event?.timezone ?: TimeZone.currentSystemDefault().id) }
 
-    if (selectedCalendar == -1L) {
-        // simple empty state
-    }
-
     Scaffold(topBar = {
         TopAppBar({}, actions = {
             IconButton({
@@ -102,13 +92,13 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                     put(CalendarContract.Events.EVENT_TIMEZONE, timezone)
                 }
                 viewModel.upsertEvent(eventId, values)
-                backStack.removeAt(backStack.lastIndex)
+                backStack.pop()
             }) {
                 Icon(Icons.Default.Save, contentDescription = "Save")
             }
         }, navigationIcon = {
             IconButton({
-                backStack.removeAt(backStack.lastIndex)
+                backStack.pop()
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Save")
             }

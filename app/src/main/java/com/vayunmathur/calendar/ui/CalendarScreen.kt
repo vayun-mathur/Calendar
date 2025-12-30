@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -30,9 +32,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -41,7 +40,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,32 +56,23 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.zIndex
 import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.Calendar
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.Event
-import com.vayunmathur.calendar.LocalNavResultRegistry
-import com.vayunmathur.calendar.ResultEffect
 import com.vayunmathur.calendar.Route
+import com.vayunmathur.calendar.vutil.ResultEffect
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
-import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
-
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
@@ -230,39 +219,12 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
 }
 
 @Composable
-fun CalendarSetDateDialog(backStack: NavBackStack<Route>, dateViewing: LocalDate) {
-    val registry = LocalNavResultRegistry.current
-    val state = rememberDatePickerState(dateViewing.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds())
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-        Column(Modifier.padding(8.dp)) {
-            DatePicker(state)
-            Row(Modifier.align(Alignment.End)) {
-                Button({
-                    backStack.removeAt(backStack.lastIndex)
-                }) {
-                    Text("Cancel")
-                }
-                Spacer(Modifier.width(8.dp))
-                Button({
-                    val result = Instant.fromEpochMilliseconds(state.selectedDateMillis!!)
-                        .toLocalDateTime(TimeZone.UTC).date
-                    registry.dispatchResult("GotoDate", result)
-                    backStack.removeAt(backStack.lastIndex)
-                }, enabled = state.selectedDateMillis != null) {
-                    Text("Go to date")
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun WeekHeader(weekDays: List<LocalDate>) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         weekDays.forEach { d ->
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                 Text(text = d.dayOfWeek.name.take(3), fontSize = 12.sp, color = Color.Gray)
-                Text(text = d.dayOfMonth.toString(), fontWeight = FontWeight.Bold)
+                Text(text = d.day.toString(), fontWeight = FontWeight.Bold)
             }
         }
     }
