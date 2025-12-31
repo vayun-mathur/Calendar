@@ -5,7 +5,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -44,7 +44,6 @@ import com.vayunmathur.calendar.ui.atEndOfDayIn
 import com.vayunmathur.calendar.ui.computePositionedEventsForDay
 import com.vayunmathur.calendar.ui.dateFormat
 import com.vayunmathur.calendar.ui.dateRangeString
-import com.vayunmathur.calendar.ui.dialog.TimezonePickerDialog
 import com.vayunmathur.calendar.ui.theme.CalendarThemeGlance
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
@@ -56,6 +55,7 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.Padding
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 
 class CalendarGlanceWidget : GlanceAppWidget() {
@@ -118,7 +118,8 @@ fun Content(positionedEvents: Map<LocalDate, List<Instance>>, events: Map<Long, 
                 items(positionedEvents[day]!!) { instance ->
                     val orEvent = events[instance.eventID]!!
                     Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                        Row(GlanceModifier.background(GlanceTheme.colors.primaryContainer).cornerRadius(6.dp).clickable (actionStartActivity<MainActivity>(actionParametersOf(longPreferencesKey("id").toParametersKey() to instance.id!!)))) {
+                        Row(GlanceModifier.background(GlanceTheme.colors.primaryContainer).cornerRadius(6.dp).clickable (actionStartActivity<MainActivity>(actionParametersOf(
+                            stringPreferencesKey("instance").toParametersKey() to Json.encodeToString(instance))))) {
                             Box(GlanceModifier.background(ColorProvider(Color(orEvent.color ?: calendars[orEvent.calendarID]!!.color))).width(8.dp).fillMaxHeight()) {}
                             Column(GlanceModifier.padding(4.dp).fillMaxWidth()) {
                                 Text(

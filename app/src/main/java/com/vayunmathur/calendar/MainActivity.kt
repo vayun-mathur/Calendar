@@ -45,6 +45,7 @@ import com.vayunmathur.calendar.vutil.reset
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,8 +58,8 @@ class MainActivity : ComponentActivity() {
                 if (!hasPermissions) {
                     NoPermissionsScreen(permissions) { hasPermissions = it }
                 } else {
-                    if(intent.hasExtra("id")) {
-                        Navigation(intent.getLongExtra("id", 0))
+                    if(intent.hasExtra("instance")) {
+                        Navigation(Json.decodeFromString<Instance>(intent.getStringExtra("instance")!!))
                     } else {
                         Navigation(null)
                     }
@@ -97,7 +98,7 @@ sealed interface Route: NavKey {
     @Serializable
     data object Calendar: Route {
         @Serializable
-        data class GotoDialog(val dateViewing: kotlinx.datetime.LocalDate): Route
+        data class GotoDialog(val dateViewing: LocalDate): Route
     }
 
     @Serializable
@@ -116,7 +117,7 @@ sealed interface Route: NavKey {
     }
 
     @Serializable
-    data class Event(val id: Long): Route
+    data class Event(val instance: Instance): Route
 
     @Serializable
     data class EditEvent(val id: Long?): Route {
@@ -135,12 +136,12 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation(id: Long?) {
+fun Navigation(instance: Instance?) {
     val viewModel: ContactViewModel = viewModel()
-    val backStack = rememberNavBackStack(listOfNotNull(Route.Calendar, id?.let {Route.Event(it)}))
-    LaunchedEffect(id) {
-        if(id != null) {
-            backStack.reset(Route.Calendar, Route.Event(id))
+    val backStack = rememberNavBackStack(listOfNotNull(Route.Calendar, instance?.let {Route.Event(it)}))
+    LaunchedEffect(instance) {
+        if(instance != null) {
+            backStack.reset(Route.Calendar, Route.Event(instance))
         } else {
             backStack.reset(Route.Calendar)
         }
@@ -152,7 +153,7 @@ fun Navigation(id: Long?) {
             CalendarScreen(viewModel, backStack)
         }
         entry<Route.Event> { key ->
-            EventScreen(viewModel, key.id, backStack)
+            EventScreen(viewModel, key.instance, backStack)
         }
         entry<Route.Settings> {
             SettingsScreen(viewModel, backStack)

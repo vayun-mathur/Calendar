@@ -2,9 +2,12 @@ package com.vayunmathur.calendar
 
 import android.content.Context
 import android.provider.CalendarContract
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
@@ -15,30 +18,39 @@ data class Instance(
     val id: Long,
     val eventID: Long,
     val begin: Long,
-    val end: Long
+    val end: Long,
+    val timezone: String
 ) {
 
     val startDateTime: LocalDateTime
-        get() = Instant.fromEpochMilliseconds(begin).toLocalDateTime(TimeZone.currentSystemDefault())
+        get() = Instant.fromEpochMilliseconds(begin).toLocalDateTime(TimeZone.of(timezone))
 
     val endDateTime: LocalDateTime
-        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(TimeZone.currentSystemDefault())
+        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(TimeZone.of(timezone))
 
     val spanDays: List<LocalDate>
-        get() = (startDateTime.date..endDateTime.date).toList()
+        get() {
+            val startDate = startDateTime.date
+            val endDate = if (endDateTime.time == LocalTime(
+                    0,
+                    0,
+                    0
+                )
+            ) (endDateTime.date - DatePeriod(days = 1)) else endDateTime.date
+            return (startDate..endDate).toList()
+        }
 
 
     companion object {
         fun getInstances(context: Context, startTime: Instant, endTime: Instant): List<Instance> {
             val instances = mutableListOf<Instance>()
 
-            val uri = CalendarContract.Instances.CONTENT_URI
             val projection = arrayOf(
                 CalendarContract.Instances._ID,
                 CalendarContract.Instances.EVENT_ID,
                 CalendarContract.Instances.BEGIN,
                 CalendarContract.Instances.END,
-                CalendarContract.Instances.ALL_DAY,
+                CalendarContract.Instances.EVENT_TIMEZONE,
             )
             val cursor = CalendarContract.Instances.query(
                 context.contentResolver,
@@ -54,9 +66,11 @@ data class Instance(
                     val start =
                         it.getLong(it.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN))
                     val end = it.getLong(it.getColumnIndexOrThrow(CalendarContract.Instances.END))
+                    val timezone =
+                        it.getString(it.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_TIMEZONE))
 
                     if (end < start) continue
-                    instances.add(Instance(id, eventID, start, end))
+                    instances.add(Instance(id, eventID, start, end, timezone))
                 }
             }
 

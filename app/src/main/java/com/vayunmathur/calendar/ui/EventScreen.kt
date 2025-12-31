@@ -29,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
+import com.vayunmathur.calendar.Instance
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.vutil.pop
@@ -38,11 +39,11 @@ import kotlinx.datetime.format
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventScreen(viewModel: ContactViewModel, eventId: Long, backStack: NavBackStack<Route>) {
+fun EventScreen(viewModel: ContactViewModel, instance: Instance, backStack: NavBackStack<Route>) {
     val events by viewModel.events.collectAsState()
     val calendars by viewModel.calendars.collectAsState()
 
-    val event = events.find { it.id == eventId }
+    val event = events.find { it.id == instance.eventID }
     if (event == null) {
         // simple empty state
         Text("Event not found")
@@ -82,7 +83,7 @@ fun EventScreen(viewModel: ContactViewModel, eventId: Long, backStack: NavBackSt
             }, supportingContent = {
                 Column {
                     Text(calendar.displayName)
-                    Text(dateRangeString(event.startDateTime.date, event.endDateTime.date, event.startDateTime.time, event.endDateTime.time, event.allDay))
+                    Text(dateRangeString(instance.startDateTime.date, instance.endDateTime.date, instance.startDateTime.time, instance.endDateTime.time, event.allDay))
                 }
             }, leadingContent = {
                 Box(Modifier.size(24.dp).background(Color(calendar.color), RoundedCornerShape(4.dp)))

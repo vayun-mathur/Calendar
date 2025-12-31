@@ -4,11 +4,7 @@ import android.content.Context
 import android.provider.CalendarContract
 import androidx.core.database.getIntOrNull
 import androidx.core.database.getStringOrNull
-import kotlinx.datetime.DatePeriod
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
@@ -34,18 +30,6 @@ data class Event(
 
     val endDateTime
         get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(TimeZone.of(timezone))
-
-    val spanDays: List<LocalDate>
-        get() {
-            val startDate = startDateTime.date
-            val endDate = if (endDateTime.time == LocalTime(
-                    0,
-                    0,
-                    0
-                )
-            ) (endDateTime.date - DatePeriod(days = 1)) else endDateTime.date
-            return (startDate..endDate).toList()
-        }
 
     companion object {
         fun getAllEvents(context: Context): List<Event> {
