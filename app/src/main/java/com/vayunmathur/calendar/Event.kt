@@ -3,11 +3,9 @@ package com.vayunmathur.calendar
 import android.content.Context
 import android.provider.CalendarContract
 import androidx.core.database.getIntOrNull
-import androidx.core.database.getLongOrNull
 import androidx.core.database.getStringOrNull
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
@@ -27,7 +25,8 @@ data class Event(
     val start: Long,
     val end: Long,
     val timezone: String = "UTC",
-    val allDay: Boolean
+    val allDay: Boolean,
+    val rrule: RRule?
 ) {
 
     val startDateTime
@@ -39,7 +38,12 @@ data class Event(
     val spanDays: List<LocalDate>
         get() {
             val startDate = startDateTime.date
-            val endDate = if(endDateTime.time == LocalTime(0, 0, 0)) (endDateTime.date - DatePeriod(days = 1)) else endDateTime.date
+            val endDate = if (endDateTime.time == LocalTime(
+                    0,
+                    0,
+                    0
+                )
+            ) (endDateTime.date - DatePeriod(days = 1)) else endDateTime.date
             return (startDate..endDate).toList()
         }
 
@@ -59,28 +63,55 @@ data class Event(
                 CalendarContract.Events.DTEND,
                 CalendarContract.Events.ALL_DAY,
                 CalendarContract.Events.EVENT_TIMEZONE,
-                CalendarContract.Events.DELETED
+                CalendarContract.Events.DELETED,
+                CalendarContract.Events.RRULE
             )
             val cursor = context.contentResolver.query(uri, projection, null, null, null)
             cursor?.use {
-                while(it.moveToNext()) {
+                while (it.moveToNext()) {
                     val id = it.getLong(it.getColumnIndexOrThrow(CalendarContract.Events._ID))
-                    val calendarID = it.getLong(it.getColumnIndexOrThrow(CalendarContract.Events.CALENDAR_ID))
-                    val title = it.getString(it.getColumnIndexOrThrow(CalendarContract.Events.TITLE))
-                    val description = it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.DESCRIPTION)) ?: ""
-                    val location = it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_LOCATION)) ?: ""
-                    val color = it.getIntOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_COLOR))
-                    val start = it.getLong(it.getColumnIndexOrThrow(CalendarContract.Events.DTSTART))
+                    val calendarID =
+                        it.getLong(it.getColumnIndexOrThrow(CalendarContract.Events.CALENDAR_ID))
+                    val title =
+                        it.getString(it.getColumnIndexOrThrow(CalendarContract.Events.TITLE))
+                    val description =
+                        it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.DESCRIPTION))
+                            ?: ""
+                    val location =
+                        it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_LOCATION))
+                            ?: ""
+                    val color =
+                        it.getIntOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_COLOR))
+                    val start =
+                        it.getLong(it.getColumnIndexOrThrow(CalendarContract.Events.DTSTART))
                     val end = it.getLong(it.getColumnIndexOrThrow(CalendarContract.Events.DTEND))
-                    val allDay = it.getInt(it.getColumnIndexOrThrow(CalendarContract.Events.ALL_DAY)) == 1
-                    val timezone = it.getString(it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_TIMEZONE))
-                    val deleted = it.getInt(it.getColumnIndexOrThrow(CalendarContract.Events.DELETED)) == 1
+                    val allDay =
+                        it.getInt(it.getColumnIndexOrThrow(CalendarContract.Events.ALL_DAY)) == 1
+                    val timezone =
+                        it.getString(it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_TIMEZONE))
+                    val deleted =
+                        it.getInt(it.getColumnIndexOrThrow(CalendarContract.Events.DELETED)) == 1
+                    val rrule =
+                        it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.RRULE))
+                            ?: ""
 
-                    if(deleted) continue
+                    if (deleted) continue
 
-                    if(title == null) continue
-                    if(end < start) continue
-                    val event = Event(id, calendarID, title, description, location, color, start, end, timezone, allDay)
+                    if (title == null) continue
+                    if (end < start) continue
+                    val event = Event(
+                        id,
+                        calendarID,
+                        title,
+                        description,
+                        location,
+                        color,
+                        start,
+                        end,
+                        timezone,
+                        allDay,
+                        RRule.parse(rrule)
+                    )
                     events.add(event)
                 }
             }
