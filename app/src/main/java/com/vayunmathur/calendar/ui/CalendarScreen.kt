@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -61,27 +63,35 @@ import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.calendar.Calendar
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.Event
+import com.vayunmathur.calendar.Instance
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.vutil.ResultEffect
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
+    val context = LocalContext.current
     val events by viewModel.events.collectAsState()
     val calendarsList by viewModel.calendars.collectAsState()
     val calendars = calendarsList.associateBy { it.id }
     val calendarVisibility by viewModel.calendarVisibility.collectAsState()
+
+    val visibleEvents = events.filter { calendarVisibility[it.calendarID] ?: true }
+    val vEventsByID = events.associateBy { it.id!! }
+
 
     // compute today's date and restore last viewed date if available
     val lastViewed by viewModel.lastViewedDate.collectAsState()
@@ -191,19 +201,15 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                     val sunday = baseSunday.plus(DatePeriod(days = offset * 7))
                     val weekDays = (0..6).map { sunday.plus(DatePeriod(days = it)) }
 
-                    // partition events into the week (only include events that intersect the week)
-                    val weekEvents = events.filter { ev ->
-                        // respect calendar visibility: if not present in map, default to true
-                        val visible = calendarVisibility[ev.calendarID] ?: true
-                        visible && ev.spanDays.last() >= weekDays.first() && ev.spanDays.first() <= weekDays.last()
+                    val weekInstances = Instance.getInstances(context, weekDays.first().atStartOfDayIn(TimeZone.currentSystemDefault()), weekDays.last().atEndOfDayIn(TimeZone.currentSystemDefault()))
+                        .filter { it.eventID in vEventsByID }
+
+                    val allDayByDate: Map<LocalDate, List<Instance>> = weekDays.associateWith { d ->
+                        weekInstances.filter { ev -> vEventsByID[ev.eventID]!!.allDay && d in ev.spanDays }
                     }
 
-                    val allDayByDate: Map<LocalDate, List<Event>> = weekDays.associateWith { d ->
-                        weekEvents.filter { ev -> ev.allDay && d in ev.spanDays }
-                    }
-
-                    val timedByDateHour: Map<LocalDate, Map<Int, List<Event>>> = weekDays.associateWith { d ->
-                        val timed = weekEvents.filter { ev -> !ev.allDay && d in ev.spanDays }
+                    val timedByDateHour: Map<LocalDate, Map<Int, List<Instance>>> = weekDays.associateWith { d ->
+                        val timed = weekInstances.filter { ev -> !vEventsByID[ev.eventID]!!.allDay && d in ev.spanDays }
                         timed.groupBy { ev ->
                             ev.startDateTime.hour
                         }
@@ -212,7 +218,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                     Column(modifier = Modifier.fillMaxSize()) {
                         val density = LocalDensity.current
                         WeekHeader(weekDays)
-                        AllDayRow(allDayByDate, calendars, weekDays) { id ->
+                        AllDayRow(allDayByDate, vEventsByID, calendars, weekDays) { id ->
                             // persist currently viewed date so returning restores the same week
                             viewModel.setLastViewedDate(dateViewing)
                             backStack.add(Route.Event(id))
@@ -220,7 +226,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                         Spacer(Modifier.onGloballyPositioned{
                             yOffset = with(density) { it.positionInParent().y.toDp() }
                         })
-                        HourlyGrid(timedByDateHour, calendars, weekDays, verticalState, onEventClick = { id ->
+                        HourlyGrid(timedByDateHour, vEventsByID, calendars, weekDays, verticalState, onEventClick = { id ->
                             viewModel.setLastViewedDate(dateViewing)
                             backStack.add(Route.Event(id))
                         })
@@ -229,6 +235,10 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
             }
         }
     }
+}
+
+fun LocalDate.atEndOfDayIn(currentSystemDefault: TimeZone): Instant {
+    return this.plus(DatePeriod(days = 1)).atStartOfDayIn(currentSystemDefault)
 }
 
 @Composable
@@ -244,16 +254,18 @@ private fun WeekHeader(weekDays: List<LocalDate>) {
 }
 
 @Composable
-private fun AllDayRow(allDayByDate: Map<LocalDate, List<Event>>, calendars: Map<Long, Calendar>, weekDays: List<LocalDate>, onEventClick: (Long) -> Unit) {
+private fun AllDayRow(allDayByDate: Map<LocalDate, List<Instance>>,
+                      events: Map<Long, Event>, calendars: Map<Long, Calendar>, weekDays: List<LocalDate>, onEventClick: (Long) -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         weekDays.forEach { d ->
-            val events = allDayByDate[d].orEmpty()
+            val instances = allDayByDate[d].orEmpty()
             Column(modifier = Modifier.weight(1f)) {
-                if (events.isEmpty()) {
+                if (instances.isEmpty()) {
                     Box(modifier = Modifier.height(32.dp).border(1.dp, Color.DarkGray)) {}
                 } else {
                     Column {
-                        events.forEach { ev ->
+                        instances.forEach { instance ->
+                            val ev = events[instance.eventID]!!
                             Box(modifier = Modifier
                                 .padding(bottom = 4.dp)
                                 .border(1.dp, Color.Black)
@@ -275,7 +287,8 @@ private fun AllDayRow(allDayByDate: Map<LocalDate, List<Event>>, calendars: Map<
 
 @Composable
 private fun HourlyGrid(
-    timedByDateHour: Map<LocalDate, Map<Int, List<Event>>>,
+    timedByDateHour: Map<LocalDate, Map<Int, List<Instance>>>,
+    events: Map<Long, Event>,
     calendars: Map<Long, Calendar>,
     weekDays: List<LocalDate>,
     verticalState: ScrollState,
@@ -310,7 +323,7 @@ private fun HourlyGrid(
                     }
 
                     // compute positioned events using the helper that assigns columns for overlaps
-                    val positioned = computePositionedEventsForDay(eventsForDay, calendars, d)
+                    val positioned = computePositionedEventsForDay(eventsForDay, events, calendars, d)
 
                     // overlay event segments positioned by their time within the day and column
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -341,7 +354,7 @@ private fun HourlyGrid(
                                     .zIndex(1f + ev.columnIndex * 0.01f)
                                     .border(1.dp, Color.Black)
                                     .background(Color(ev.color))
-                                    .clickable(enabled = true) { onEventClick(ev.id) }
+                                    .clickable(enabled = true) { onEventClick(ev.instanceID) }
                             ) {
                                 Text(
                                     text = ev.title.ifEmpty { "(No title)" },

@@ -2,13 +2,15 @@ package com.vayunmathur.calendar.ui
 
 import com.vayunmathur.calendar.Calendar
 import com.vayunmathur.calendar.Event
+import com.vayunmathur.calendar.Instance
 import kotlinx.datetime.LocalDate
 
 /**
  * Represents an event slice inside a single day (minutes from 0..1440)
  */
 data class PositionedEvent(
-    val id: Long,
+    val instanceID: Long,
+    val eventID: Long,
     val title: String,
     val color: Int,
     val startMinutes: Int,
@@ -21,25 +23,25 @@ data class PositionedEvent(
  * Compute positioned events (column assignment) for the given day. Caller may pass events that span the day.
  * This function will clamp per-day start/end to [0,1440) and ignore zero-length slices.
  */
-fun computePositionedEventsForDay(events: List<Event>, calendars: Map<Long, Calendar>, day: LocalDate): List<PositionedEvent> {
+fun computePositionedEventsForDay(instances: List<Instance>, events: Map<Long, Event>, calendars: Map<Long, Calendar>, day: LocalDate): List<PositionedEvent> {
     // Build per-day slices
-    data class Slice(val id: Long, val title: String, val color: Int, val start: Int, val end: Int)
+    data class Slice(val instanceID: Long, val eventID: Long, val title: String, val color: Int, val start: Int, val end: Int)
 
     val slices = ArrayList<Slice>()
-    for (ev in events) {
-        val id = ev.id ?: continue
+    for (instance in instances) {
         // determine start and end minutes for this day
-        val startMinutes = if (day == ev.spanDays.first()) {
-            ev.startDateTime.hour * 60 + ev.startDateTime.minute
+        val startMinutes = if (day == instance.spanDays.first()) {
+            instance.startDateTime.hour * 60 + instance.startDateTime.minute
         } else 0
-        val endMinutes = if (day == ev.spanDays.last()) {
-            ev.endDateTime.hour * 60 + ev.endDateTime.minute
+        val endMinutes = if (day == instance.spanDays.last()) {
+            instance.endDateTime.hour * 60 + instance.endDateTime.minute
         } else 24 * 60
 
         val s = startMinutes.coerceAtLeast(0).coerceAtMost(24 * 60)
         val e = endMinutes.coerceAtLeast(0).coerceAtMost(24 * 60)
         if (s >= e) continue
-        slices.add(Slice(id, ev.title, ev.color ?: calendars[ev.calendarID]!!.color, s, e))
+        val ev = events[instance.eventID] ?: continue
+        slices.add(Slice(instance.id, instance.eventID, ev.title, ev.color ?: calendars[ev.calendarID]!!.color, s, e))
     }
 
     if (slices.isEmpty()) return emptyList()
@@ -96,7 +98,8 @@ fun computePositionedEventsForDay(events: List<Event>, calendars: Map<Long, Cale
             pq.add(Pair(r.end, col))
             assigned.add(
                 PositionedEvent(
-                    id = r.slice.id,
+                    instanceID = r.slice.instanceID,
+                    eventID = r.slice.eventID,
                     title = r.slice.title,
                     color = r.slice.color,
                     startMinutes = r.start,

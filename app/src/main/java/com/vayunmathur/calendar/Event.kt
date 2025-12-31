@@ -98,7 +98,6 @@ data class Event(
                     if (deleted) continue
 
                     if (title == null) continue
-                    if (end < start) continue
                     val event = Event(
                         id,
                         calendarID,

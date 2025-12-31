@@ -37,15 +37,19 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.vayunmathur.calendar.Calendar
 import com.vayunmathur.calendar.Event
+import com.vayunmathur.calendar.Instance
 import com.vayunmathur.calendar.MainActivity
 import com.vayunmathur.calendar.R
+import com.vayunmathur.calendar.ui.atEndOfDayIn
 import com.vayunmathur.calendar.ui.computePositionedEventsForDay
 import com.vayunmathur.calendar.ui.dateFormat
 import com.vayunmathur.calendar.ui.dateRangeString
+import com.vayunmathur.calendar.ui.dialog.TimezonePickerDialog
 import com.vayunmathur.calendar.ui.theme.CalendarThemeGlance
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DayOfWeekNames
 import kotlinx.datetime.format.MonthNames
@@ -56,7 +60,7 @@ import kotlin.time.Clock
 
 class CalendarGlanceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val events = Event.getAllEvents(context)
+        val events = Event.getAllEvents(context).associateBy { it.id!! }
         val calendars = Calendar.getAllCalendars(context).associateBy { it.id }
 
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
@@ -65,24 +69,28 @@ class CalendarGlanceWidget : GlanceAppWidget() {
         val nextMonth = today + DatePeriod(months = 1)
         val days = today..<nextMonth
 
+        val instances = Instance.getInstances(context, today.atStartOfDayIn(TimeZone.currentSystemDefault()), nextMonth.atEndOfDayIn(
+            TimeZone.currentSystemDefault()))
+
         val positionedEvents = days.associateWith { day ->
             computePositionedEventsForDay(
-                events.filter { day in it.spanDays },
+                instances.filter { day in it.spanDays },
+                events,
                 calendars,
                 day
-            ).map{posEvt -> events.find{it.id == posEvt.id}!!} + events.filter { day in it.spanDays && it.allDay }
+            ).map{posEvt -> instances.find{it.id == posEvt.instanceID}!!} + instances.filter { day in it.spanDays && events[it.eventID]!!.allDay }
         }
 
         provideContent {
             CalendarThemeGlance(context) {
-                Content(positionedEvents, calendars)
+                Content(positionedEvents, events, calendars)
             }
         }
     }
 }
 @SuppressLint("RestrictedApi")
 @Composable
-fun Content(positionedEvents: Map<LocalDate, List<Event>>, calendars: Map<Long, Calendar>) {
+fun Content(positionedEvents: Map<LocalDate, List<Instance>>, events: Map<Long, Event>, calendars: Map<Long, Calendar>) {
     val dateFormatS = LocalDate.Format {
         dayOfWeek(DayOfWeekNames.ENGLISH_ABBREVIATED)
         chars(", ")
@@ -107,9 +115,10 @@ fun Content(positionedEvents: Map<LocalDate, List<Event>>, calendars: Map<Long, 
                         Text(day.format(dateFormat), GlanceModifier.padding(vertical = 6.dp), style = defaultTextStyle.copy(color = GlanceTheme.colors.onSurface))
                     }
                 }
-                items(positionedEvents[day]!!) { orEvent ->
+                items(positionedEvents[day]!!) { instance ->
+                    val orEvent = events[instance.eventID]!!
                     Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                        Row(GlanceModifier.background(GlanceTheme.colors.primaryContainer).cornerRadius(6.dp).clickable (actionStartActivity<MainActivity>(actionParametersOf(longPreferencesKey("id").toParametersKey() to orEvent.id!!)))) {
+                        Row(GlanceModifier.background(GlanceTheme.colors.primaryContainer).cornerRadius(6.dp).clickable (actionStartActivity<MainActivity>(actionParametersOf(longPreferencesKey("id").toParametersKey() to instance.id!!)))) {
                             Box(GlanceModifier.background(ColorProvider(Color(orEvent.color ?: calendars[orEvent.calendarID]!!.color))).width(8.dp).fillMaxHeight()) {}
                             Column(GlanceModifier.padding(4.dp).fillMaxWidth()) {
                                 Text(
@@ -118,10 +127,10 @@ fun Content(positionedEvents: Map<LocalDate, List<Event>>, calendars: Map<Long, 
                                 )
                                 Text(
                                     dateRangeString(
-                                        orEvent.startDateTime.date,
-                                        orEvent.endDateTime.date,
-                                        orEvent.startDateTime.time,
-                                        orEvent.endDateTime.time,
+                                        instance.startDateTime.date,
+                                        instance.endDateTime.date,
+                                        instance.startDateTime.time,
+                                        instance.endDateTime.time,
                                         orEvent.allDay
                                     ),
                                     style = defaultTextStyle.copy(color = GlanceTheme.colors.onPrimaryContainer)
