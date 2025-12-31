@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -180,30 +181,30 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
     }
 
     Scaffold(topBar = {
-        TopAppBar({}, actions = {
-            IconButton({
-                val values = ContentValues().apply {
-                    put(CalendarContract.Events.TITLE, title)
-                    put(CalendarContract.Events.DESCRIPTION, description)
-                    put(CalendarContract.Events.EVENT_LOCATION, location)
-                    put(CalendarContract.Events.CALENDAR_ID, selectedCalendar)
-                    put(CalendarContract.Events.DTSTART, startDate.atTime(startTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds())
-                    put(CalendarContract.Events.DTEND, endDate.atTime(endTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds())
-                    put(CalendarContract.Events.ALL_DAY, if(allDay) 1 else 0)
-                    put(CalendarContract.Events.EVENT_TIMEZONE, timezone)
-                }
-                viewModel.upsertEvent(eventId, values)
-                backStack.pop()
-            }) {
-                Icon(Icons.Default.Save, contentDescription = "Save")
-            }
-        }, navigationIcon = {
+        TopAppBar({}, navigationIcon = {
             IconButton({
                 backStack.pop()
             }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Save")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
         })
+    }, floatingActionButton = {
+        FloatingActionButton(onClick = {
+            val values = ContentValues().apply {
+                put(CalendarContract.Events.TITLE, title)
+                put(CalendarContract.Events.DESCRIPTION, description)
+                put(CalendarContract.Events.EVENT_LOCATION, location)
+                put(CalendarContract.Events.CALENDAR_ID, selectedCalendar)
+                put(CalendarContract.Events.DTSTART, startDate.atTime(startTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds())
+                put(CalendarContract.Events.DTEND, endDate.atTime(endTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds())
+                put(CalendarContract.Events.ALL_DAY, if(allDay) 1 else 0)
+                put(CalendarContract.Events.EVENT_TIMEZONE, timezone)
+            }
+            viewModel.upsertEvent(eventId, values)
+            backStack.pop()
+        }) {
+            Icon(Icons.Default.Save, contentDescription = "Save")
+        }
     }, contentWindowInsets = WindowInsets()) { paddingValues ->
         Column(Modifier.padding(paddingValues).verticalScroll(rememberScrollState())) {
             OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text("Title") })
