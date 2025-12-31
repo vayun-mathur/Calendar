@@ -37,7 +37,9 @@ import com.vayunmathur.calendar.ui.SettingsRenameCalendarDialog
 import com.vayunmathur.calendar.ui.SettingsScreen
 import com.vayunmathur.calendar.ui.dialog.CalendarPickerDialog
 import com.vayunmathur.calendar.ui.dialog.DatePickerDialog
+import com.vayunmathur.calendar.ui.dialog.RecurrenceDialog
 import com.vayunmathur.calendar.ui.dialog.TimePickerDialogContent
+import com.vayunmathur.calendar.ui.dialog.TimezonePickerDialog
 import com.vayunmathur.calendar.ui.theme.CalendarTheme
 import com.vayunmathur.calendar.vutil.MainNavigation
 import com.vayunmathur.calendar.vutil.rememberNavBackStack
@@ -134,7 +136,7 @@ sealed interface Route: NavKey {
         data class TimezonePickerDialog(val key: String): Route
 
         @Serializable
-        data class RecurrenceDialog(val key: String, val initial: com.vayunmathur.calendar.RecurrenceParams? = null): Route
+        data class RecurrenceDialog(val key: String, val startDate: LocalDate, val initial: RecurrenceParams? = null): Route
     }
 }
 
@@ -185,12 +187,12 @@ fun Navigation(instance: Instance?) {
 
         entry<Route.EditEvent.TimezonePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
             // show timezone selection dialog
-            com.vayunmathur.calendar.ui.dialog.TimezonePickerDialog(backStack, key.key)
+            TimezonePickerDialog(backStack, key.key)
         }
 
         entry<Route.EditEvent.RecurrenceDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
             // show recurrence picker dialog; RecurrenceParams is passed as initial value optionally
-            com.vayunmathur.calendar.ui.dialog.RecurrenceDialog(backStack, key.key, key.initial)
+            RecurrenceDialog(backStack, key.key, key.startDate, key.initial)
         }
 
         // Settings-related dialog entries

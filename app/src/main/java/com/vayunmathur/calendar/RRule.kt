@@ -1,5 +1,6 @@
 package com.vayunmathur.calendar
 
+import com.vayunmathur.calendar.ui.dialog.capitalcase
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.number
@@ -122,7 +123,9 @@ interface RRule {
             val days = daysOfWeek.sorted().joinToString(",") { it.toIcal() }
             return "FREQ=WEEKLY;INTERVAL=$weeks;BYDAY=$days${endCondition.toRRuleSuffix()}"
         }
-        override fun toString(firstDay: LocalDate): String = "Every $weeks weeks on ${daysOfWeek.joinToString(", ")}"
+        override fun toString(firstDay: LocalDate): String = "Every $weeks weeks on ${
+            daysOfWeek.joinToString(", ") { it.name.take(3).capitalcase() }
+        }"
     }
 
     data class EveryXDays(val days: Int, override val endCondition: EndCondition) : RRule {

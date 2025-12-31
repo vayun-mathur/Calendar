@@ -51,10 +51,8 @@ import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.RRule
 import com.vayunmathur.calendar.RecurrenceParams
 import com.vayunmathur.calendar.Route
-import com.vayunmathur.calendar.vutil.pop
 import com.vayunmathur.calendar.vutil.ResultEffect
-import java.time.ZonedDateTime
-import java.time.ZoneId
+import com.vayunmathur.calendar.vutil.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -65,6 +63,8 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.Padding
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -119,7 +119,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
         val oldStart = startDate.atTime(startTime).toInstant(tz)
         val oldEnd = endDate.atTime(endTime).toInstant(tz)
         var dur = oldEnd - oldStart
-        if (dur.isNegative()) dur = kotlin.time.Duration.ZERO
+        if (dur.isNegative()) dur = Duration.ZERO
 
         startDate = selected
 
@@ -145,7 +145,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
         val oldStart = startDate.atTime(startTime).toInstant(tz)
         val oldEnd = endDate.atTime(endTime).toInstant(tz)
         var dur = oldEnd - oldStart
-        if (dur.isNegative()) dur = kotlin.time.Duration.ZERO
+        if (dur.isNegative()) dur = Duration.ZERO
 
         startTime = selected
 
@@ -258,9 +258,8 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                 { /* icon placeholder */ },
                 { Text(if (rruleObj == null) "Does not repeat" else rruleString.ifBlank { "Repeats" }, Modifier.clickable {
                     // pass initial RecurrenceParams based on existing rrule
-                    val firstDay = startDate
-                    val initial = RecurrenceParams.fromRRule(rruleObj, firstDay)
-                    backStack.add(Route.EditEvent.RecurrenceDialog(KEY_RECURRENCE, initial))
+                    val initial = RecurrenceParams.fromRRule(rruleObj)
+                    backStack.add(Route.EditEvent.RecurrenceDialog(KEY_RECURRENCE, startDate, initial))
                 }) },
                 { if (rruleObj != null) Text("Remove", Modifier.clickable {
                     rruleObj = null
@@ -340,28 +339,4 @@ val timeFormat = LocalTime.Format {
     minute()
     chars(" ")
     amPmMarker("AM", "PM")
-}
-
-// helper to format duration in iCal duration format e.g. PT1H30M or P1D
-fun formatDurationIcal(ms: Long): String {
-    var seconds = ms / 1000
-    val days = seconds / (24 * 3600)
-    seconds %= (24 * 3600)
-    val hours = seconds / 3600
-    seconds %= 3600
-    val minutes = seconds / 60
-    seconds %= 60
-
-    return if (days > 0) {
-        "P${days}D"
-    } else {
-        val time = buildString {
-            append("PT")
-            if (hours > 0) append("${hours}H")
-            if (minutes > 0) append("${minutes}M")
-            if (seconds > 0) append("${seconds}S")
-            if (hours == 0L && minutes == 0L && seconds == 0L) append("0S")
-        }
-        time
-    }
 }
