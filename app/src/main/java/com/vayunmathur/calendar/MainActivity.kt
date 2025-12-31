@@ -35,6 +35,7 @@ import com.vayunmathur.calendar.ui.SettingsChangeColorDialog
 import com.vayunmathur.calendar.ui.SettingsDeleteCalendarDialog
 import com.vayunmathur.calendar.ui.SettingsRenameCalendarDialog
 import com.vayunmathur.calendar.ui.SettingsScreen
+import com.vayunmathur.calendar.ui.dialog.CalendarPickerDialog
 import com.vayunmathur.calendar.ui.dialog.DatePickerDialog
 import com.vayunmathur.calendar.ui.dialog.TimePickerDialogContent
 import com.vayunmathur.calendar.ui.theme.CalendarTheme
@@ -125,6 +126,11 @@ sealed interface Route: NavKey {
 
         @Serializable
         data class TimePickerDialog(val key: String, val initialTime: LocalTime, val minTime: LocalTime? = null): Route
+
+        @Serializable
+        data class CalendarPickerDialog(val key: String): Route
+        @Serializable
+        data class TimezonePickerDialog(val key: String): Route
     }
 }
 
@@ -167,6 +173,15 @@ fun Navigation(id: Long?) {
         entry<Route.EditEvent.TimePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
             // initialTime is already a LocalTime? so pass directly, along with optional minTime
             TimePickerDialogContent(backStack, key.key, key.initialTime, key.minTime)
+        }
+
+        entry<Route.EditEvent.CalendarPickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+            CalendarPickerDialog(backStack, key.key)
+        }
+
+        entry<Route.EditEvent.TimezonePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+            // show timezone selection dialog
+            com.vayunmathur.calendar.ui.dialog.TimezonePickerDialog(backStack, key.key)
         }
 
         // Settings-related dialog entries

@@ -2,6 +2,7 @@ package com.vayunmathur.calendar.ui
 
 import android.content.ContentValues
 import android.provider.CalendarContract
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
@@ -80,7 +83,19 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
     var title by remember { mutableStateOf(event?.title ?: "") }
     var description by remember { mutableStateOf(event?.description ?: "") }
     var location by remember { mutableStateOf(event?.location ?: "") }
-    var selectedCalendar by remember { mutableStateOf(event?.calendarID ?: calendars.firstOrNull()?.id ?: -1L) }
+    // default to the event's calendar if editing; otherwise prefer the first editable calendar
+    var selectedCalendar by remember { mutableStateOf(event?.calendarID ?: (calendars.firstOrNull { it.canModify }?.id ?: calendars.firstOrNull()?.id ?: -1L)) }
+    // If calendars load/refresh after composition, ensure the default remains an editable calendar when creating a new event
+    LaunchedEffect(calendars) {
+        if (event == null) {
+            val current = selectedCalendar
+            val currentIsEditable = calendars.any { it.id == current && it.canModify }
+            if (!currentIsEditable) {
+                val editable = calendars.firstOrNull { it.canModify } ?: calendars.firstOrNull()
+                if (editable != null) selectedCalendar = editable.id
+            }
+        }
+    }
     var allDay by remember { mutableStateOf(event?.allDay ?: false) }
     var startDate by remember { mutableStateOf(event?.startDateTime?.date ?: today) }
     var endDate by remember { mutableStateOf(event?.endDateTime?.date ?: today) }
@@ -147,6 +162,23 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
         }
     }
 
+    // Result key for calendar picker
+    val KEY_CALENDAR = "EditEvent.calendar"
+    // open dialog via navigation and handle result
+    ResultEffect<Long>(KEY_CALENDAR) { calId ->
+        selectedCalendar = calId
+    }
+
+    // Timezone selector (navigation dialog) - open via Nav route and handle result
+    val KEY_TIMEZONE = "EditEvent.timezone"
+    ResultEffect<String>(KEY_TIMEZONE) { z -> timezone = z }
+    if (!allDay) {
+        Item(
+            { Icon(painterResource(R.drawable.globe_24px), null) },
+            { Text(timezone, Modifier.clickable { backStack.add(Route.EditEvent.TimezonePickerDialog(KEY_TIMEZONE)) }) }
+        )
+    }
+
     Scaffold(topBar = {
         TopAppBar({}, actions = {
             IconButton({
@@ -175,6 +207,16 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
     }, contentWindowInsets = WindowInsets()) { paddingValues ->
         Column(Modifier.padding(paddingValues).verticalScroll(rememberScrollState())) {
             OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text("Title") })
+
+            // Calendar selector: moved above the datetime section — only when creating a new event
+            if (eventId == null) {
+                Item(
+                    { Box(modifier = Modifier.size(24.dp).background(Color(calendars.find { it.id == selectedCalendar }?.color ?: 0))) },
+                    { Text(calendars.find { it.id == selectedCalendar }?.displayName ?: "Select calendar", Modifier.clickable { backStack.add(Route.EditEvent.CalendarPickerDialog(KEY_CALENDAR)) }) },
+                    {}
+                )
+            }
+
             OutlinedTextField(description, { description = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text("Description") })
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
             Item(
@@ -206,10 +248,17 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                     backStack.add(Route.EditEvent.TimePickerDialog(KEY_END_TIME, endTime, minTime))
                 }) }
             )
-            if(!allDay) Item(
-                {Icon(painterResource(R.drawable.globe_24px), null)},
-                {Text(timezone)}
-            )
+
+            // Timezone selector (navigation dialog) - open via Nav route and handle result
+            val KEY_TIMEZONE = "EditEvent.timezone"
+            ResultEffect<String>(KEY_TIMEZONE) { z -> timezone = z }
+            if (!allDay) {
+                Item(
+                    { Box(modifier = Modifier.size(24.dp).background(Color.Transparent)) { Icon(painterResource(R.drawable.globe_24px), null) } },
+                    { Text(timezone, Modifier.clickable { backStack.add(Route.EditEvent.TimezonePickerDialog(KEY_TIMEZONE)) }) }
+                )
+            }
+
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
             OutlinedTextField(location, { location = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text("Location") })
         }

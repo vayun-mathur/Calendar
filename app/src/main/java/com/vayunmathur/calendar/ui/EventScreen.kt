@@ -80,7 +80,10 @@ fun EventScreen(viewModel: ContactViewModel, eventId: Long, backStack: NavBackSt
             ListItem({
                 Text(event.title, style = MaterialTheme.typography.titleLarge)
             }, supportingContent = {
-                Text(dateRangeString(event.startDateTime.date, event.endDateTime.date, event.startDateTime.time, event.endDateTime.time, event.allDay))
+                Column {
+                    Text(calendar.displayName)
+                    Text(dateRangeString(event.startDateTime.date, event.endDateTime.date, event.startDateTime.time, event.endDateTime.time, event.allDay))
+                }
             }, leadingContent = {
                 Box(Modifier.size(24.dp).background(Color(calendar.color), RoundedCornerShape(4.dp)))
             })
