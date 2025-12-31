@@ -256,6 +256,7 @@ private fun AllDayRow(allDayByDate: Map<LocalDate, List<Event>>, calendars: Map<
                         events.forEach { ev ->
                             Box(modifier = Modifier
                                 .padding(bottom = 4.dp)
+                                .border(1.dp, Color.Black)
                                 .background(Color(ev.color ?: calendars[ev.calendarID]!!.color))
                                 .height(28.dp)
                                 .clickable {
@@ -338,6 +339,7 @@ private fun HourlyGrid(
                                     .height(heightDp)
                                     .padding(2.dp)
                                     .zIndex(1f + ev.columnIndex * 0.01f)
+                                    .border(1.dp, Color.Black)
                                     .background(Color(ev.color))
                                     .clickable(enabled = true) { onEventClick(ev.id) }
                             ) {
