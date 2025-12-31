@@ -2,6 +2,7 @@ package com.vayunmathur.calendar.ui
 
 import android.content.ContentValues
 import android.provider.CalendarContract
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,6 +45,9 @@ import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.vutil.pop
+import com.vayunmathur.calendar.vutil.ResultEffect
+import java.time.ZonedDateTime
+import java.time.ZoneId
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -54,7 +58,12 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.Padding
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
+
+// Result keys for the date/time pickers
+private const val KEY_START_DATE = "EditEvent.startDate"
+private const val KEY_END_DATE = "EditEvent.endDate"
+private const val KEY_START_TIME = "EditEvent.startTime"
+private const val KEY_END_TIME = "EditEvent.endTime"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,8 +73,9 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
 
     val event = events.find { it.id == eventId }
 
-    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
+    val znow = ZonedDateTime.now(ZoneId.systemDefault())
+    val today = LocalDate(znow.year, znow.monthValue, znow.dayOfMonth)
+    val now = LocalTime(znow.hour, znow.minute)
 
     var title by remember { mutableStateOf(event?.title ?: "") }
     var description by remember { mutableStateOf(event?.description ?: "") }
@@ -77,6 +87,65 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
     var startTime by remember { mutableStateOf(event?.startDateTime?.time ?: now) }
     var endTime by remember { mutableStateOf(event?.endDateTime?.time ?: now) }
     var timezone by remember { mutableStateOf(event?.timezone ?: TimeZone.currentSystemDefault().id) }
+
+    // Collect results from pickers
+    ResultEffect<LocalDate>(KEY_START_DATE) { selected ->
+        // preserve duration between old start and end
+        val tz = TimeZone.of(timezone)
+        val oldStart = startDate.atTime(startTime).toInstant(tz)
+        val oldEnd = endDate.atTime(endTime).toInstant(tz)
+        var dur = oldEnd - oldStart
+        if (dur.isNegative()) dur = kotlin.time.Duration.ZERO
+
+        startDate = selected
+
+        val newStart = startDate.atTime(startTime).toInstant(tz)
+        val newEnd = newStart + dur
+        val newEndLdt = newEnd.toLocalDateTime(tz)
+        endDate = newEndLdt.date
+        endTime = newEndLdt.time
+    }
+
+    ResultEffect<LocalDate>(KEY_END_DATE) { selected ->
+        // ensure end date is not before start date
+        if (selected < startDate) {
+            endDate = startDate
+        } else {
+            endDate = selected
+        }
+    }
+
+    ResultEffect<LocalTime>(KEY_START_TIME) { selected ->
+        // preserve duration between old start and end
+        val tz = TimeZone.of(timezone)
+        val oldStart = startDate.atTime(startTime).toInstant(tz)
+        val oldEnd = endDate.atTime(endTime).toInstant(tz)
+        var dur = oldEnd - oldStart
+        if (dur.isNegative()) dur = kotlin.time.Duration.ZERO
+
+        startTime = selected
+
+        val newStart = startDate.atTime(startTime).toInstant(tz)
+        val newEnd = newStart + dur
+        val newEndLdt = newEnd.toLocalDateTime(tz)
+        endDate = newEndLdt.date
+        endTime = newEndLdt.time
+    }
+
+    ResultEffect<LocalTime>(KEY_END_TIME) { selected ->
+        // ensure end time is not before start time when on same date
+        if (endDate == startDate) {
+            val before = selected.hour < startTime.hour || (selected.hour == startTime.hour && selected.minute < startTime.minute)
+            if (before) {
+                // clamp to startTime
+                endTime = startTime
+            } else {
+                endTime = selected
+            }
+        } else {
+            endTime = selected
+        }
+    }
 
     Scaffold(topBar = {
         TopAppBar({}, actions = {
@@ -115,13 +184,27 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
             )
             Item(
                 {},
-                { Text(startDate.format(dateFormat)) },
-                { if(!allDay) Text(startTime.format(timeFormat)) }
+                { Text(startDate.format(dateFormat), Modifier.clickable {
+                    // open date picker dialog
+                    backStack.add(Route.EditEvent.DatePickerDialog(KEY_START_DATE, startDate))
+                }) },
+                { if(!allDay) Text(startTime.format(timeFormat), Modifier.clickable {
+                    // open time picker dialog
+                    // no min time for start
+                    backStack.add(Route.EditEvent.TimePickerDialog(KEY_START_TIME, startTime, null))
+                }) }
             )
             Item(
                 {},
-                { Text(endDate.format(dateFormat)) },
-                { if(!allDay) Text(endTime.format(timeFormat)) }
+                { Text(endDate.format(dateFormat), Modifier.clickable {
+                    // when opening end date, prevent selecting a date before startDate
+                    backStack.add(Route.EditEvent.DatePickerDialog(KEY_END_DATE, endDate, startDate))
+                }) },
+                { if(!allDay) Text(endTime.format(timeFormat), Modifier.clickable{
+                    // when opening end time, supply minTime if endDate equals startDate
+                    val minTime = if (endDate == startDate) startTime else null
+                    backStack.add(Route.EditEvent.TimePickerDialog(KEY_END_TIME, endTime, minTime))
+                }) }
             )
             if(!allDay) Item(
                 {Icon(painterResource(R.drawable.globe_24px), null)},

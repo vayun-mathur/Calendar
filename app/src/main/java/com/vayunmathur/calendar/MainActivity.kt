@@ -35,11 +35,14 @@ import com.vayunmathur.calendar.ui.SettingsChangeColorDialog
 import com.vayunmathur.calendar.ui.SettingsDeleteCalendarDialog
 import com.vayunmathur.calendar.ui.SettingsRenameCalendarDialog
 import com.vayunmathur.calendar.ui.SettingsScreen
+import com.vayunmathur.calendar.ui.dialog.DatePickerDialog
+import com.vayunmathur.calendar.ui.dialog.TimePickerDialogContent
 import com.vayunmathur.calendar.ui.theme.CalendarTheme
 import com.vayunmathur.calendar.vutil.MainNavigation
 import com.vayunmathur.calendar.vutil.rememberNavBackStack
 import com.vayunmathur.calendar.vutil.reset
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
@@ -93,7 +96,7 @@ sealed interface Route: NavKey {
     @Serializable
     data object Calendar: Route {
         @Serializable
-        data class GotoDialog(val dateViewing: Long): Route
+        data class GotoDialog(val dateViewing: kotlinx.datetime.LocalDate): Route
     }
 
     @Serializable
@@ -115,7 +118,14 @@ sealed interface Route: NavKey {
     data class Event(val id: Long): Route
 
     @Serializable
-    data class EditEvent(val id: Long?): Route
+    data class EditEvent(val id: Long?): Route {
+        // Dialog routes for date/time picking that are specific to the EditEvent page
+        @Serializable
+        data class DatePickerDialog(val key: String, val initialDate: LocalDate, val minDate: LocalDate? = null): Route
+
+        @Serializable
+        data class TimePickerDialog(val key: String, val initialTime: LocalTime, val minTime: LocalTime? = null): Route
+    }
 }
 
 @Composable
@@ -146,7 +156,17 @@ fun Navigation(id: Long?) {
         }
 
         entry<Route.Calendar.GotoDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
-            CalendarSetDateDialog(backStack, LocalDate.fromEpochDays(key.dateViewing))
+            CalendarSetDateDialog(backStack, key.dateViewing)
+        }
+
+        // Dialog entries for the new date/time pickers (nested under EditEvent)
+        entry<Route.EditEvent.DatePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+            DatePickerDialog(backStack, key.key, key.initialDate, key.minDate)
+        }
+
+        entry<Route.EditEvent.TimePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+            // initialTime is already a LocalTime? so pass directly, along with optional minTime
+            TimePickerDialogContent(backStack, key.key, key.initialTime, key.minTime)
         }
 
         // Settings-related dialog entries

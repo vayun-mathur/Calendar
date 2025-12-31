@@ -12,6 +12,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.TimeZone
+import kotlinx.datetime.LocalDate
+
+private const val PREFS_NAME = "calendar_prefs"
+private const val KEY_LAST_VIEWED_DATE = "last_viewed_date"
 
 class ContactViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -25,6 +29,33 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     private val _calendarVisibility = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
     val calendarVisibility: StateFlow<Map<Long, Boolean>> = _calendarVisibility.asStateFlow()
 
+    // persist the last viewed date for the calendar (used to restore viewed week across restarts)
+    private val _lastViewedDate = MutableStateFlow<LocalDate?>(null)
+    val lastViewedDate: StateFlow<LocalDate?> = _lastViewedDate.asStateFlow()
+
+    private val prefs = application.getSharedPreferences(PREFS_NAME, Application.MODE_PRIVATE)
+
+    private fun loadLastViewedDate() {
+        val s = prefs.getString(KEY_LAST_VIEWED_DATE, null) ?: return
+        try {
+            val parsed = LocalDate.parse(s)
+            _lastViewedDate.value = parsed
+        } catch (_: Exception) {
+            // ignore parse errors
+        }
+    }
+
+    fun setLastViewedDate(d: LocalDate?) {
+        _lastViewedDate.value = d
+        viewModelScope.launch {
+            if (d == null) {
+                prefs.edit().remove(KEY_LAST_VIEWED_DATE).apply()
+            } else {
+                prefs.edit().putString(KEY_LAST_VIEWED_DATE, d.toString()).apply()
+            }
+        }
+    }
+
     init {
         // load events and calendars at startup
         viewModelScope.launch {
@@ -37,6 +68,8 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
             // initialize visibility from provider's VISIBLE flag
             val visMap = loaded.associate { cal -> cal.id to cal.visible }
             _calendarVisibility.value = visMap
+            // load persisted last viewed date
+            loadLastViewedDate()
         }
     }
 

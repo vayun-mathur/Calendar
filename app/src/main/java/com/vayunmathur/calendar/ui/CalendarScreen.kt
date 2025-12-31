@@ -83,8 +83,10 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
     val calendars = calendarsList.associateBy { it.id }
     val calendarVisibility by viewModel.calendarVisibility.collectAsState()
 
-    // compute today's date
-    var dateViewing by remember { mutableStateOf(Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date) }
+    // compute today's date and restore last viewed date if available
+    val lastViewed by viewModel.lastViewedDate.collectAsState()
+    val initialDate = lastViewed ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    var dateViewing by remember { mutableStateOf(initialDate) }
 
     // state for which week to show; 0 = current week, +1 = next week, -1 = previous week
     var weekOffset by remember { mutableStateOf(0) }
@@ -105,7 +107,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                     val baseSunday = if (daysToSubtract == 0) dateViewing else dateViewing.minus(DatePeriod(days = daysToSubtract))
                     val visibleSunday = baseSunday.plus(DatePeriod(days = weekOffset * 7))
                     val mon = MonthNames.ENGLISH_ABBREVIATED.names[visibleSunday.month.number - 1]
-                    Row(Modifier.clickable { backStack.add(Route.Calendar.GotoDialog(dateViewing.toEpochDays())) }, verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.clickable { backStack.add(Route.Calendar.GotoDialog(dateViewing)) }, verticalAlignment = Alignment.CenterVertically) {
                         Text("$mon ${visibleSunday.year}", fontWeight = FontWeight.Bold)
                         Icon(Icons.Default.ArrowDropDown, null)
                     }
@@ -119,7 +121,11 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
         },
         contentWindowInsets = WindowInsets(),
         floatingActionButton = {
-            FloatingActionButton(onClick = { backStack.add(Route.EditEvent(null)) }) {
+            FloatingActionButton(onClick = {
+                // persist currently viewed date before navigating to the new event page
+                viewModel.setLastViewedDate(dateViewing)
+                backStack.add(Route.EditEvent(null))
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Add")
             }
         },
@@ -206,11 +212,18 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                     Column(modifier = Modifier.fillMaxSize()) {
                         val density = LocalDensity.current
                         WeekHeader(weekDays)
-                        AllDayRow(allDayByDate, calendars, weekDays) { id -> backStack.add(Route.Event(id)) }
+                        AllDayRow(allDayByDate, calendars, weekDays) { id ->
+                            // persist currently viewed date so returning restores the same week
+                            viewModel.setLastViewedDate(dateViewing)
+                            backStack.add(Route.Event(id))
+                        }
                         Spacer(Modifier.onGloballyPositioned{
                             yOffset = with(density) { it.positionInParent().y.toDp() }
                         })
-                        HourlyGrid(timedByDateHour, calendars, weekDays, verticalState, onEventClick = { id -> backStack.add(Route.Event(id)) })
+                        HourlyGrid(timedByDateHour, calendars, weekDays, verticalState, onEventClick = { id ->
+                            viewModel.setLastViewedDate(dateViewing)
+                            backStack.add(Route.Event(id))
+                        })
                     }
                 }
             }

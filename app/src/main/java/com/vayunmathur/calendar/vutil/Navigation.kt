@@ -20,17 +20,19 @@ import androidx.navigation3.runtime.serialization.NavBackStackSerializer
 import androidx.navigation3.runtime.serialization.NavKeySerializer
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 
 // The Registry that holds the events
 class NavResultRegistry {
-    private val _results = Channel<Pair<String, Any>>(Channel.BUFFERED)
-    val results = _results.receiveAsFlow()
+    // Use a SharedFlow with some extra buffer capacity so events are not dropped
+    private val _results = MutableSharedFlow<Pair<String, Any>>(extraBufferCapacity = 64)
+    val results = _results.asSharedFlow()
 
-    fun dispatchResult(key: String, result: Any) {
-        _results.trySend(key to result)
+    suspend fun dispatchResult(key: String, result: Any) {
+        // emit is suspend and will suspend until the value is delivered or buffer accepts it
+        _results.emit(key to result)
     }
 }
 
