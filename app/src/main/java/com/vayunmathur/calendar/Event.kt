@@ -7,6 +7,7 @@ import androidx.core.database.getStringOrNull
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
+import kotlin.time.Duration
 import kotlin.time.Instant
 
 @Serializable
@@ -48,7 +49,8 @@ data class Event(
                 CalendarContract.Events.ALL_DAY,
                 CalendarContract.Events.EVENT_TIMEZONE,
                 CalendarContract.Events.DELETED,
-                CalendarContract.Events.RRULE
+                CalendarContract.Events.RRULE,
+                CalendarContract.Events.DURATION
             )
             val cursor = context.contentResolver.query(uri, projection, null, null, null)
             cursor?.use {
@@ -68,7 +70,7 @@ data class Event(
                         it.getIntOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_COLOR))
                     val start =
                         it.getLong(it.getColumnIndexOrThrow(CalendarContract.Events.DTSTART))
-                    val end = it.getLong(it.getColumnIndexOrThrow(CalendarContract.Events.DTEND))
+                    var end = it.getLong(it.getColumnIndexOrThrow(CalendarContract.Events.DTEND))
                     val allDay =
                         it.getInt(it.getColumnIndexOrThrow(CalendarContract.Events.ALL_DAY)) == 1
                     val timezone =
@@ -78,6 +80,14 @@ data class Event(
                     val rrule =
                         it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.RRULE))
                             ?: ""
+                    val duration = it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.DURATION))
+
+
+                    val durationMillis = duration?.let { try {Duration.parse(it).inWholeMilliseconds } catch(e: Exception) {0} }
+
+                    if(end == 0L && durationMillis != null) {
+                        end = start + durationMillis
+                    }
 
                     if (deleted) continue
 

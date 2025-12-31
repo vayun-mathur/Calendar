@@ -35,6 +35,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.R
+import com.vayunmathur.calendar.RRule
+import com.vayunmathur.calendar.RecurrenceParams
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.vutil.pop
 import com.vayunmathur.calendar.vutil.ResultEffect
@@ -62,12 +65,15 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.Padding
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 // Result keys for the date/time pickers
 private const val KEY_START_DATE = "EditEvent.startDate"
 private const val KEY_END_DATE = "EditEvent.endDate"
 private const val KEY_START_TIME = "EditEvent.startTime"
 private const val KEY_END_TIME = "EditEvent.endTime"
+private const val KEY_RECURRENCE = "EditEvent.recurrence"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,6 +109,8 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
     var startTime by remember { mutableStateOf(event?.startDateTime?.time ?: now) }
     var endTime by remember { mutableStateOf(event?.endDateTime?.time ?: now) }
     var timezone by remember { mutableStateOf(event?.timezone ?: TimeZone.currentSystemDefault().id) }
+    var rruleObj by remember { mutableStateOf(event?.rrule) }
+    val rruleString by remember { derivedStateOf {rruleObj?.toString(startDate) ?: ""} }
 
     // Collect results from pickers
     ResultEffect<LocalDate>(KEY_START_DATE) { selected ->
@@ -163,6 +171,11 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
         }
     }
 
+    // Recurrence dialog result: receives an RRULE string or empty string
+    ResultEffect<RRule>(KEY_RECURRENCE) { res ->
+        rruleObj = res
+    }
+
     // Result key for calendar picker
     val KEY_CALENDAR = "EditEvent.calendar"
     // open dialog via navigation and handle result
@@ -195,11 +208,25 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                 put(CalendarContract.Events.DESCRIPTION, description)
                 put(CalendarContract.Events.EVENT_LOCATION, location)
                 put(CalendarContract.Events.CALENDAR_ID, selectedCalendar)
-                put(CalendarContract.Events.DTSTART, startDate.atTime(startTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds())
-                put(CalendarContract.Events.DTEND, endDate.atTime(endTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds())
+                val dtstart = startDate.atTime(startTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds()
+                val dtendActual = endDate.atTime(endTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds()
+                put(CalendarContract.Events.DTSTART, dtstart)
+                if (rruleObj != null) {
+                    // For recurring events, DTEND must be 0 and DURATION set to the event length
+                    put(CalendarContract.Events.DTEND, null as Long?)
+                    val duration = dtendActual - dtstart
+                    put(CalendarContract.Events.DURATION, duration.milliseconds.toIsoString())
+                    put(CalendarContract.Events.RRULE, rruleObj!!.asString(startDate))
+                } else {
+                    put(CalendarContract.Events.DTEND, dtendActual)
+                    // clear DURATION and RRULE if present
+                    put(CalendarContract.Events.DURATION, null as String?)
+                    put(CalendarContract.Events.RRULE, null as String?)
+                }
                 put(CalendarContract.Events.ALL_DAY, if(allDay) 1 else 0)
                 put(CalendarContract.Events.EVENT_TIMEZONE, timezone)
             }
+            println(values)
             viewModel.upsertEvent(eventId, values)
             backStack.pop()
         }) {
@@ -225,6 +252,21 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                 {Text("All-day")},
                 { Switch(allDay, { allDay = it }) }
             )
+
+            // Recurrence selector
+            Item(
+                { /* icon placeholder */ },
+                { Text(if (rruleObj == null) "Does not repeat" else rruleString.ifBlank { "Repeats" }, Modifier.clickable {
+                    // pass initial RecurrenceParams based on existing rrule
+                    val firstDay = startDate
+                    val initial = RecurrenceParams.fromRRule(rruleObj, firstDay)
+                    backStack.add(Route.EditEvent.RecurrenceDialog(KEY_RECURRENCE, initial))
+                }) },
+                { if (rruleObj != null) Text("Remove", Modifier.clickable {
+                    rruleObj = null
+                }) }
+            )
+
             Item(
                 {},
                 { Text(startDate.format(dateFormat), Modifier.clickable {
@@ -298,4 +340,28 @@ val timeFormat = LocalTime.Format {
     minute()
     chars(" ")
     amPmMarker("AM", "PM")
+}
+
+// helper to format duration in iCal duration format e.g. PT1H30M or P1D
+fun formatDurationIcal(ms: Long): String {
+    var seconds = ms / 1000
+    val days = seconds / (24 * 3600)
+    seconds %= (24 * 3600)
+    val hours = seconds / 3600
+    seconds %= 3600
+    val minutes = seconds / 60
+    seconds %= 60
+
+    return if (days > 0) {
+        "P${days}D"
+    } else {
+        val time = buildString {
+            append("PT")
+            if (hours > 0) append("${hours}H")
+            if (minutes > 0) append("${minutes}M")
+            if (seconds > 0) append("${seconds}S")
+            if (hours == 0L && minutes == 0L && seconds == 0L) append("0S")
+        }
+        time
+    }
 }

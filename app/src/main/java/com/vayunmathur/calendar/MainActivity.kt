@@ -132,6 +132,9 @@ sealed interface Route: NavKey {
         data class CalendarPickerDialog(val key: String): Route
         @Serializable
         data class TimezonePickerDialog(val key: String): Route
+
+        @Serializable
+        data class RecurrenceDialog(val key: String, val initial: com.vayunmathur.calendar.RecurrenceParams? = null): Route
     }
 }
 
@@ -183,6 +186,11 @@ fun Navigation(instance: Instance?) {
         entry<Route.EditEvent.TimezonePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
             // show timezone selection dialog
             com.vayunmathur.calendar.ui.dialog.TimezonePickerDialog(backStack, key.key)
+        }
+
+        entry<Route.EditEvent.RecurrenceDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+            // show recurrence picker dialog; RecurrenceParams is passed as initial value optionally
+            com.vayunmathur.calendar.ui.dialog.RecurrenceDialog(backStack, key.key, key.initial)
         }
 
         // Settings-related dialog entries
