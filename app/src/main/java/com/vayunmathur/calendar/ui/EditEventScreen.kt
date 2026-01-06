@@ -66,6 +66,7 @@ import kotlinx.datetime.toLocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
 
 // Result keys for the date/time pickers
@@ -208,14 +209,17 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                 put(CalendarContract.Events.DESCRIPTION, description)
                 put(CalendarContract.Events.EVENT_LOCATION, location)
                 put(CalendarContract.Events.CALENDAR_ID, selectedCalendar)
-                val dtstart = startDate.atTime(startTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds()
-                val dtendActual = endDate.atTime(endTime).toInstant(TimeZone.of(timezone)).toEpochMilliseconds()
+                val tz = if(allDay) "UTC" else timezone
+                val dtstart = startDate.atTime(startTime).toInstant(TimeZone.of(tz)).toEpochMilliseconds()
+                val dtendActual = endDate.atTime(endTime).toInstant(TimeZone.of(tz)).toEpochMilliseconds()
                 put(CalendarContract.Events.DTSTART, dtstart)
                 if (rruleObj != null) {
                     // For recurring events, DTEND must be 0 and DURATION set to the event length
                     put(CalendarContract.Events.DTEND, null as Long?)
-                    val duration = dtendActual - dtstart
-                    put(CalendarContract.Events.DURATION, duration.milliseconds.toIsoString())
+                    var duration = (dtendActual - dtstart).milliseconds
+                    if(allDay) duration += 1.days
+                    println(duration)
+                    put(CalendarContract.Events.DURATION, duration.toIsoString())
                     put(CalendarContract.Events.RRULE, rruleObj!!.asString(startDate))
                 } else {
                     put(CalendarContract.Events.DTEND, dtendActual)
@@ -224,7 +228,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                     put(CalendarContract.Events.RRULE, null as String?)
                 }
                 put(CalendarContract.Events.ALL_DAY, if(allDay) 1 else 0)
-                put(CalendarContract.Events.EVENT_TIMEZONE, timezone)
+                put(CalendarContract.Events.EVENT_TIMEZONE, tz)
             }
             println(values)
             viewModel.upsertEvent(eventId, values)

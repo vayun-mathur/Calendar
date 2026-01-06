@@ -19,7 +19,10 @@ data class Instance(
     val eventID: Long,
     val begin: Long,
     val end: Long,
-    val timezone: String
+    val timezone: String,
+    val allDay: Boolean,
+    val eventTitle: String,
+    val color: Int
 ) {
 
     val startDateTime: LocalDateTime
@@ -51,6 +54,9 @@ data class Instance(
                 CalendarContract.Instances.BEGIN,
                 CalendarContract.Instances.END,
                 CalendarContract.Instances.EVENT_TIMEZONE,
+                CalendarContract.Instances.ALL_DAY,
+                CalendarContract.Instances.TITLE,
+                CalendarContract.Instances.DISPLAY_COLOR,
             )
             val cursor = CalendarContract.Instances.query(
                 context.contentResolver,
@@ -68,9 +74,13 @@ data class Instance(
                     val end = it.getLong(it.getColumnIndexOrThrow(CalendarContract.Instances.END))
                     val timezone =
                         it.getString(it.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_TIMEZONE))
+                    val allDay =
+                        it.getInt(it.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)) > 0
+                    val eventTitle = it.getString(it.getColumnIndexOrThrow(CalendarContract.Instances.TITLE))
+                    val color = it.getInt(it.getColumnIndexOrThrow(CalendarContract.Instances.DISPLAY_COLOR))
 
-                    if (end < start) continue
-                    instances.add(Instance(id, eventID, start, end, timezone))
+                    //if (end < start) continue
+                    instances.add(Instance(id, eventID, start, end, timezone, allDay, eventTitle, color))
                 }
             }
 

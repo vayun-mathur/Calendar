@@ -35,8 +35,6 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextDefaults.defaultTextStyle
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import com.vayunmathur.calendar.Calendar
-import com.vayunmathur.calendar.Event
 import com.vayunmathur.calendar.Instance
 import com.vayunmathur.calendar.MainActivity
 import com.vayunmathur.calendar.R
@@ -60,9 +58,6 @@ import kotlin.time.Clock
 
 class CalendarGlanceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val events = Event.getAllEvents(context).associateBy { it.id!! }
-        val calendars = Calendar.getAllCalendars(context).associateBy { it.id }
-
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val today = now.date
 
@@ -71,26 +66,27 @@ class CalendarGlanceWidget : GlanceAppWidget() {
 
         val instances = Instance.getInstances(context, today.atStartOfDayIn(TimeZone.currentSystemDefault()), nextMonth.atEndOfDayIn(
             TimeZone.currentSystemDefault()))
+        val (allDay, notAllDay) = instances.partition { it.allDay }
+
+        println(allDay.map { "${it.startDateTime} ${it.endDateTime} ${it.spanDays}" })
 
         val positionedEvents = days.associateWith { day ->
             computePositionedEventsForDay(
-                instances.filter { day in it.spanDays },
-                events,
-                calendars,
+                notAllDay.filter { day in it.spanDays },
                 day
-            ).map{posEvt -> instances.find{it.id == posEvt.instanceID}!!} + instances.filter { day in it.spanDays && events[it.eventID]!!.allDay }
+            ).mapNotNull { posEvt -> notAllDay.find { it.id == posEvt.instanceID } } + allDay.filter { day in it.spanDays }
         }
 
         provideContent {
             CalendarThemeGlance(context) {
-                Content(positionedEvents, events, calendars)
+                Content(positionedEvents)
             }
         }
     }
 }
 @SuppressLint("RestrictedApi")
 @Composable
-fun Content(positionedEvents: Map<LocalDate, List<Instance>>, events: Map<Long, Event>, calendars: Map<Long, Calendar>) {
+fun Content(positionedEvents: Map<LocalDate, List<Instance>>) {
     val dateFormatS = LocalDate.Format {
         dayOfWeek(DayOfWeekNames.ENGLISH_ABBREVIATED)
         chars(", ")
@@ -116,14 +112,13 @@ fun Content(positionedEvents: Map<LocalDate, List<Instance>>, events: Map<Long, 
                     }
                 }
                 items(positionedEvents[day]!!) { instance ->
-                    val orEvent = events[instance.eventID]!!
                     Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 6.dp)) {
                         Row(GlanceModifier.background(GlanceTheme.colors.primaryContainer).cornerRadius(6.dp).clickable (actionStartActivity<MainActivity>(actionParametersOf(
                             stringPreferencesKey("instance").toParametersKey() to Json.encodeToString(instance))))) {
-                            Box(GlanceModifier.background(ColorProvider(Color(orEvent.color ?: calendars[orEvent.calendarID]!!.color))).width(8.dp).fillMaxHeight()) {}
+                            Box(GlanceModifier.background(ColorProvider(Color(instance.color))).width(8.dp).fillMaxHeight()) {}
                             Column(GlanceModifier.padding(4.dp).fillMaxWidth()) {
                                 Text(
-                                    orEvent.title,
+                                    instance.eventTitle,
                                     style = TextStyle(fontWeight = FontWeight.Bold)
                                 )
                                 Text(
@@ -132,7 +127,7 @@ fun Content(positionedEvents: Map<LocalDate, List<Instance>>, events: Map<Long, 
                                         instance.endDateTime.date,
                                         instance.startDateTime.time,
                                         instance.endDateTime.time,
-                                        orEvent.allDay
+                                        instance.allDay
                                     ),
                                     style = defaultTextStyle.copy(color = GlanceTheme.colors.onPrimaryContainer)
                                 )

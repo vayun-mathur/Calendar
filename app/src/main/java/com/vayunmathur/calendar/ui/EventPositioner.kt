@@ -1,7 +1,5 @@
 package com.vayunmathur.calendar.ui
 
-import com.vayunmathur.calendar.Calendar
-import com.vayunmathur.calendar.Event
 import com.vayunmathur.calendar.Instance
 import kotlinx.datetime.LocalDate
 
@@ -23,7 +21,7 @@ data class PositionedEvent(
  * Compute positioned events (column assignment) for the given day. Caller may pass events that span the day.
  * This function will clamp per-day start/end to [0,1440) and ignore zero-length slices.
  */
-fun computePositionedEventsForDay(instances: List<Instance>, events: Map<Long, Event>, calendars: Map<Long, Calendar>, day: LocalDate): List<PositionedEvent> {
+fun computePositionedEventsForDay(instances: List<Instance>, day: LocalDate): List<PositionedEvent> {
     // Build per-day slices
     data class Slice(val instanceID: Long, val eventID: Long, val title: String, val color: Int, val start: Int, val end: Int)
 
@@ -40,8 +38,7 @@ fun computePositionedEventsForDay(instances: List<Instance>, events: Map<Long, E
         val s = startMinutes.coerceAtLeast(0).coerceAtMost(24 * 60)
         val e = endMinutes.coerceAtLeast(0).coerceAtMost(24 * 60)
         if (s >= e) continue
-        val ev = events[instance.eventID] ?: continue
-        slices.add(Slice(instance.id, instance.eventID, ev.title, ev.color ?: calendars[ev.calendarID]!!.color, s, e))
+        slices.add(Slice(instance.id, instance.eventID, instance.eventTitle, instance.color, s, e))
     }
 
     if (slices.isEmpty()) return emptyList()

@@ -156,30 +156,30 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                         }
                     }
                 }
-        }
+            }
             // remember drag total so it survives recomposition
             val dragTotal = remember { mutableStateOf(0f) }
 
             Box(Modifier.fillMaxSize().pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onHorizontalDrag = { change, delta ->
-                            dragTotal.value += delta
-                            change.consume()
-                        },
-                        onDragEnd = {
-                            val threshold = 100f // pixels
-                            if (dragTotal.value <= -threshold) {
-                                weekOffset += 1
-                            } else if (dragTotal.value >= threshold) {
-                                weekOffset -= 1
-                            }
-                            dragTotal.value = 0f
-                        },
-                        onDragCancel = {
-                            dragTotal.value = 0f
+                detectHorizontalDragGestures(
+                    onHorizontalDrag = { change, delta ->
+                        dragTotal.value += delta
+                        change.consume()
+                    },
+                    onDragEnd = {
+                        val threshold = 100f // pixels
+                        if (dragTotal.value <= -threshold) {
+                            weekOffset += 1
+                        } else if (dragTotal.value >= threshold) {
+                            weekOffset -= 1
                         }
-                    )
-                }
+                        dragTotal.value = 0f
+                    },
+                    onDragCancel = {
+                        dragTotal.value = 0f
+                    }
+                )
+            }
             ) {
 
                 // animate between weekOffset values with a horizontal slide
@@ -202,12 +202,14 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                     val weekInstances = Instance.getInstances(context, weekDays.first().atStartOfDayIn(TimeZone.currentSystemDefault()), weekDays.last().atEndOfDayIn(TimeZone.currentSystemDefault()))
                         .filter { it.eventID in vEventsByID }.filter { calendarVisibility[vEventsByID[it.eventID]!!.calendarID] ?: true }
 
+                    val (allDay, notAllDay) = weekInstances.partition { it.allDay }
+
                     val allDayByDate: Map<LocalDate, List<Instance>> = weekDays.associateWith { d ->
-                        weekInstances.filter { ev -> vEventsByID[ev.eventID]!!.allDay && d in ev.spanDays }
+                        allDay.filter { instance -> d in instance.spanDays }
                     }
 
                     val timedByDateHour: Map<LocalDate, Map<Int, List<Instance>>> = weekDays.associateWith { d ->
-                        val timed = weekInstances.filter { ev -> !vEventsByID[ev.eventID]!!.allDay && d in ev.spanDays }
+                        val timed = notAllDay.filter { instance -> d in instance.spanDays }
                         timed.groupBy { ev ->
                             ev.startDateTime.hour
                         }
@@ -224,7 +226,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                         Spacer(Modifier.onGloballyPositioned{
                             yOffset = with(density) { it.positionInParent().y.toDp() }
                         })
-                        HourlyGrid(timedByDateHour, vEventsByID, calendars, weekDays, verticalState, onEventClick = { instance ->
+                        HourlyGrid(timedByDateHour, weekDays, verticalState, onEventClick = { instance ->
                             viewModel.setLastViewedDate(dateViewing)
                             backStack.add(Route.Event(instance))
                         })
@@ -286,8 +288,6 @@ private fun AllDayRow(allDayByDate: Map<LocalDate, List<Instance>>,
 @Composable
 private fun HourlyGrid(
     timedByDateHour: Map<LocalDate, Map<Int, List<Instance>>>,
-    events: Map<Long, Event>,
-    calendars: Map<Long, Calendar>,
     weekDays: List<LocalDate>,
     verticalState: ScrollState,
     onEventClick: (Instance) -> Unit
@@ -321,7 +321,7 @@ private fun HourlyGrid(
                     }
 
                     // compute positioned events using the helper that assigns columns for overlaps
-                    val positioned = computePositionedEventsForDay(eventsForDay, events, calendars, d)
+                    val positioned = computePositionedEventsForDay(eventsForDay, d)
 
                     // overlay event segments positioned by their time within the day and column
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
