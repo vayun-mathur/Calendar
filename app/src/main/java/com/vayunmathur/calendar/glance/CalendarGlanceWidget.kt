@@ -68,8 +68,6 @@ class CalendarGlanceWidget : GlanceAppWidget() {
             TimeZone.currentSystemDefault()))
         val (allDay, notAllDay) = instances.partition { it.allDay }
 
-        println(allDay.map { "${it.startDateTime} ${it.endDateTime} ${it.spanDays}" })
-
         val positionedEvents = days.associateWith { day ->
             computePositionedEventsForDay(
                 notAllDay.filter { day in it.spanDays },

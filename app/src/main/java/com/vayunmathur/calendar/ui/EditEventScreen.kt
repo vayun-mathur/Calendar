@@ -214,7 +214,6 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                     put(CalendarContract.Events.DTEND, null as Long?)
                     var duration = (dtendActual - dtstart).milliseconds
                     if(allDay) duration += 1.days
-                    println(duration)
                     put(CalendarContract.Events.DURATION, duration.toIsoString())
                     put(CalendarContract.Events.RRULE, rruleObj!!.asString(startDate))
                 } else {
@@ -226,7 +225,6 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                 put(CalendarContract.Events.ALL_DAY, if(allDay) 1 else 0)
                 put(CalendarContract.Events.EVENT_TIMEZONE, tz)
             }
-            println(values)
             viewModel.upsertEvent(eventId, values)
             backStack.pop()
         }) {
