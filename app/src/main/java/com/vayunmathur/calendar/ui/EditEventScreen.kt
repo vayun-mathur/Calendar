@@ -16,10 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -199,7 +195,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
             IconButton({
                 backStack.pop()
             }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "Back")
             }
         })
     }, floatingActionButton = {
@@ -234,7 +230,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
             viewModel.upsertEvent(eventId, values)
             backStack.pop()
         }) {
-            Icon(Icons.Default.Save, contentDescription = "Save")
+            Icon(painterResource(R.drawable.save_24px), contentDescription = "Save")
         }
     }, contentWindowInsets = WindowInsets()) { paddingValues ->
         Column(Modifier.padding(paddingValues).verticalScroll(rememberScrollState())) {
@@ -252,7 +248,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
             OutlinedTextField(description, { description = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text("Description") })
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
             Item(
-                { Icon(Icons.Default.AccessTime, null) },
+                { Icon(painterResource(R.drawable.nest_clock_farsight_analog_24px), null) },
                 {Text("All-day")},
                 { Switch(allDay, { allDay = it }) }
             )

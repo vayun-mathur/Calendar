@@ -28,10 +28,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -54,6 +50,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,6 +60,7 @@ import com.vayunmathur.calendar.Calendar
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.Event
 import com.vayunmathur.calendar.Instance
+import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.vutil.ResultEffect
 import kotlinx.datetime.DatePeriod
@@ -117,12 +115,12 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                     val mon = MonthNames.ENGLISH_ABBREVIATED.names[visibleSunday.month.number - 1]
                     Row(Modifier.clickable { backStack.add(Route.Calendar.GotoDialog(dateViewing)) }, verticalAlignment = Alignment.CenterVertically) {
                         Text("$mon ${visibleSunday.year}", fontWeight = FontWeight.Bold)
-                        Icon(Icons.Default.ArrowDropDown, null)
+                        Icon(painterResource(R.drawable.arrow_drop_down_24px), null)
                     }
                 },
                 actions = {
                     IconButton(onClick = { backStack.add(Route.Settings) }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(painterResource(R.drawable.settings_24px), contentDescription = "Settings")
                     }
                 }
             )
@@ -134,7 +132,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                 viewModel.setLastViewedDate(dateViewing)
                 backStack.add(Route.EditEvent(null))
             }) {
-                Icon(Icons.Default.Add, contentDescription = "Add")
+                Icon(painterResource(R.drawable.add_24px), contentDescription = "Add")
             }
         },
     ) { innerPadding ->

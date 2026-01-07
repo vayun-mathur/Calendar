@@ -7,11 +7,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,20 +54,20 @@ fun EventScreen(viewModel: ContactViewModel, instance: Instance, backStack: NavB
             IconButton({
                 backStack.pop()
             }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Save")
+                Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "Save")
             }
         }, actions = {
             if(isEditable) {
                 IconButton({
                     backStack.add(Route.EditEvent(event.id))
                 }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    Icon(painterResource(R.drawable.edit_24px), contentDescription = "Edit")
                 }
                 IconButton({
                     viewModel.deleteEvent(event.id!!)
                     backStack.pop()
                 }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Edit")
+                    Icon(painterResource(R.drawable.delete_24px), contentDescription = "Edit")
                 }
             }
         })
@@ -91,7 +86,7 @@ fun EventScreen(viewModel: ContactViewModel, instance: Instance, backStack: NavB
             if(event.description.isNotBlank()) ListItem({
                 Text(event.description)
             }, leadingContent = {
-                Icon(Icons.Default.Description, null)
+                Icon(painterResource(R.drawable.description_24px), null)
             })
             if(event.location.isNotBlank()) ListItem({Text(event.location)}, leadingContent =
                 {Icon(painterResource(R.drawable.globe_24px), null)},
