@@ -2,6 +2,7 @@ package com.vayunmathur.calendar
 
 import android.content.Context
 import android.provider.CalendarContract
+import androidx.core.database.getStringOrNull
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -22,7 +23,8 @@ data class Instance(
     val timezone: String,
     val allDay: Boolean,
     val eventTitle: String,
-    val color: Int
+    val color: Int,
+    val rrule: RRule?
 ) {
 
     val startDateTime: LocalDateTime
@@ -57,6 +59,7 @@ data class Instance(
                 CalendarContract.Instances.ALL_DAY,
                 CalendarContract.Instances.TITLE,
                 CalendarContract.Instances.DISPLAY_COLOR,
+                CalendarContract.Instances.RRULE
             )
             val cursor = CalendarContract.Instances.query(
                 context.contentResolver,
@@ -78,9 +81,10 @@ data class Instance(
                         it.getInt(it.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)) > 0
                     val eventTitle = it.getString(it.getColumnIndexOrThrow(CalendarContract.Instances.TITLE))
                     val color = it.getInt(it.getColumnIndexOrThrow(CalendarContract.Instances.DISPLAY_COLOR))
+                    val rrule = RRule.parse(it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Instances.RRULE)) ?: "")
 
                     //if (end < start) continue
-                    instances.add(Instance(id, eventID, start, end, timezone, allDay, eventTitle, color))
+                    instances.add(Instance(id, eventID, start, end, timezone, allDay, eventTitle, color, rrule))
                 }
             }
 
