@@ -4,6 +4,7 @@ import android.content.Context
 import android.provider.CalendarContract
 import androidx.core.database.getIntOrNull
 import androidx.core.database.getStringOrNull
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
@@ -26,11 +27,17 @@ data class Event(
     val rrule: RRule?
 ) {
 
-    val startDateTime
+    val startDateTimeDisplay: LocalDateTime
         get() = Instant.fromEpochMilliseconds(start).toLocalDateTime(TimeZone.of(timezone))
 
-    val endDateTime
+    val endDateTimeDisplay: LocalDateTime
         get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(TimeZone.of(timezone))
+
+    val startDateTime: LocalDateTime
+        get() = Instant.fromEpochMilliseconds(start).toLocalDateTime(if(allDay) TimeZone.UTC else TimeZone.currentSystemDefault())
+
+    val endDateTime: LocalDateTime
+        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(if(allDay) TimeZone.UTC else TimeZone.currentSystemDefault())
 
     companion object {
         fun getAllEvents(context: Context): List<Event> {

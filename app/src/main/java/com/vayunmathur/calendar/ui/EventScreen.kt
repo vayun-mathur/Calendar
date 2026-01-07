@@ -78,8 +78,8 @@ fun EventScreen(viewModel: ContactViewModel, instance: Instance, backStack: NavB
             }, supportingContent = {
                 Column {
                     Text(calendar.displayName)
-                    Text(dateRangeString(instance.startDateTime.date, instance.endDateTime.date, instance.startDateTime.time, instance.endDateTime.time, instance.allDay))
-                    instance.rrule?.let { Text(it.toString(instance.startDateTime.date)) }
+                    Text(dateRangeString(instance.startDateTimeDisplay.date, instance.endDateTimeDisplay.date, instance.startDateTimeDisplay.time, instance.endDateTimeDisplay.time, instance.allDay))
+                    instance.rrule?.let { Text(it.toString(instance.startDateTimeDisplay.date)) }
                 }
             }, leadingContent = {
                 Box(Modifier.size(24.dp).background(Color(calendar.color), RoundedCornerShape(4.dp)))

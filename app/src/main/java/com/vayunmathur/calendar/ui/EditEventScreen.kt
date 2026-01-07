@@ -101,10 +101,10 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
         }
     }
     var allDay by remember { mutableStateOf(event?.allDay ?: false) }
-    var startDate by remember { mutableStateOf(event?.startDateTime?.date ?: today) }
-    var endDate by remember { mutableStateOf(event?.endDateTime?.date ?: today) }
-    var startTime by remember { mutableStateOf(event?.startDateTime?.time ?: now) }
-    var endTime by remember { mutableStateOf(event?.endDateTime?.time ?: now) }
+    var startDate by remember { mutableStateOf(event?.startDateTimeDisplay?.date ?: today) }
+    var endDate by remember { mutableStateOf(event?.endDateTimeDisplay?.date ?: today) }
+    var startTime by remember { mutableStateOf(event?.startDateTimeDisplay?.time ?: now) }
+    var endTime by remember { mutableStateOf(event?.endDateTimeDisplay?.time ?: now) }
     var timezone by remember { mutableStateOf(event?.timezone ?: TimeZone.currentSystemDefault().id) }
     var rruleObj by remember { mutableStateOf(event?.rrule) }
     val rruleString by remember { derivedStateOf {rruleObj?.toString(startDate) ?: ""} }

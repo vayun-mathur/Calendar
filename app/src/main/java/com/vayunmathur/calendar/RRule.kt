@@ -1,8 +1,10 @@
 package com.vayunmathur.calendar
 
+import com.vayunmathur.calendar.ui.dateFormat
 import com.vayunmathur.calendar.ui.dialog.capitalcase
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.format
 import kotlinx.datetime.number
 import kotlinx.serialization.Serializable
 
@@ -22,10 +24,20 @@ private fun RRule.EndCondition.toRRuleSuffix(): String = when (this) {
     is RRule.EndCondition.Until -> ";UNTIL=${date.toIcalString()}"
 }
 
-interface RRule {
-    val endCondition: EndCondition
-    fun asString(firstDay: LocalDate): String
-    fun toString(firstDay: LocalDate): String
+private fun RRule.EndCondition.toStringSuffix(): String = when (this) {
+    is RRule.EndCondition.Never -> ""
+    is RRule.EndCondition.Count -> ", $count times"
+    is RRule.EndCondition.Until -> ", Until ${date.format(dateFormat)}"
+}
+
+@Serializable
+abstract class RRule {
+    abstract val endCondition: EndCondition
+    abstract fun asString(firstDay: LocalDate): String
+    fun toString(firstDay: LocalDate): String {
+        return toStringImpl(firstDay) + endCondition.toStringSuffix()
+    }
+    protected abstract fun toStringImpl(firstDay: LocalDate): String
 
     companion object {
         fun parse(content: String): RRule? {
@@ -100,12 +112,12 @@ interface RRule {
         data class Until(val date: LocalDate) : EndCondition
     }
 
-    data class EveryXYears(val years: Int, override val endCondition: EndCondition) : RRule {
+    data class EveryXYears(val years: Int, override val endCondition: EndCondition) : RRule() {
         override fun asString(firstDay: LocalDate): String = "FREQ=YEARLY;INTERVAL=$years${endCondition.toRRuleSuffix()}"
-        override fun toString(firstDay: LocalDate): String = "Every $years years"
+        override fun toStringImpl(firstDay: LocalDate): String = "Every $years years"
     }
 
-    data class EveryXMonths(val months: Int, val type: Int, override val endCondition: EndCondition) : RRule {
+    data class EveryXMonths(val months: Int, val type: Int, override val endCondition: EndCondition) : RRule() {
         override fun asString(firstDay: LocalDate): String {
             val base = "FREQ=MONTHLY;INTERVAL=$months"
             val suffix = endCondition.toRRuleSuffix()
@@ -115,21 +127,21 @@ interface RRule {
                 "$base;BYDAY=$weekIndex$dayOfWeek$suffix"
             } else "$base$suffix"
         }
-        override fun toString(firstDay: LocalDate): String = "Every $months months"
+        override fun toStringImpl(firstDay: LocalDate): String = "Every $months months"
     }
 
-    data class EveryXWeeks(val weeks: Int, val daysOfWeek: List<DayOfWeek>, override val endCondition: EndCondition) : RRule {
+    data class EveryXWeeks(val weeks: Int, val daysOfWeek: List<DayOfWeek>, override val endCondition: EndCondition) : RRule() {
         override fun asString(firstDay: LocalDate): String {
             val days = daysOfWeek.sorted().joinToString(",") { it.toIcal() }
             return "FREQ=WEEKLY;INTERVAL=$weeks;BYDAY=$days${endCondition.toRRuleSuffix()}"
         }
-        override fun toString(firstDay: LocalDate): String = "Every $weeks weeks on ${
+        override fun toStringImpl(firstDay: LocalDate): String = "Every $weeks weeks on ${
             daysOfWeek.joinToString(", ") { it.name.take(3).capitalcase() }
         }"
     }
 
-    data class EveryXDays(val days: Int, override val endCondition: EndCondition) : RRule {
+    data class EveryXDays(val days: Int, override val endCondition: EndCondition) : RRule() {
         override fun asString(firstDay: LocalDate): String = "FREQ=DAILY;INTERVAL=$days${endCondition.toRRuleSuffix()}"
-        override fun toString(firstDay: LocalDate): String = "Every $days days"
+        override fun toStringImpl(firstDay: LocalDate): String = "Every $days days"
     }
 }

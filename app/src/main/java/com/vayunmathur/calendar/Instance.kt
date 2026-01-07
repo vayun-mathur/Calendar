@@ -27,11 +27,18 @@ data class Instance(
     val rrule: RRule?
 ) {
 
-    val startDateTime: LocalDateTime
+    val startDateTimeDisplay: LocalDateTime
         get() = Instant.fromEpochMilliseconds(begin).toLocalDateTime(TimeZone.of(timezone))
 
-    val endDateTime: LocalDateTime
+    val endDateTimeDisplay: LocalDateTime
         get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(TimeZone.of(timezone))
+
+    val startDateTime: LocalDateTime
+        get() = Instant.fromEpochMilliseconds(begin).toLocalDateTime(if(allDay) TimeZone.UTC else TimeZone.currentSystemDefault())
+
+    val endDateTime: LocalDateTime
+        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(if(allDay) TimeZone.UTC else TimeZone.currentSystemDefault())
+
 
     val spanDays: List<LocalDate>
         get() {
