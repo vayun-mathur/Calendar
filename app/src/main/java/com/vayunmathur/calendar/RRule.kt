@@ -8,7 +8,6 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime
 import kotlinx.datetime.format
-import kotlinx.datetime.number
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
@@ -44,7 +43,7 @@ private fun RRule.EndCondition.toStringSuffix(): String = when (this) {
 }
 
 @Serializable
-abstract class RRule {
+sealed class RRule {
     abstract val endCondition: EndCondition
     abstract fun asString(firstDay: LocalDate, timeZone: TimeZone): String
     fun toString(firstDay: LocalDate): String {
@@ -131,16 +130,18 @@ abstract class RRule {
         data class Until(val date: LocalDate) : EndCondition
     }
 
+    @Serializable
     data class EveryXYears(val years: Int, override val endCondition: EndCondition) : RRule() {
         override fun asString(firstDay: LocalDate, timeZone: TimeZone): String = "FREQ=YEARLY;INTERVAL=$years${endCondition.toRRuleSuffix(timeZone)}"
         override fun toStringImpl(firstDay: LocalDate): String = "Every $years years"
     }
 
-    data class EveryXMonths(val months: Int, val type: Int, override val endCondition: EndCondition) : RRule() {
+    @Serializable
+    data class EveryXMonths(val months: Int, val typeE: Int, override val endCondition: EndCondition) : RRule() {
         override fun asString(firstDay: LocalDate, timeZone: TimeZone): String {
             val base = "FREQ=MONTHLY;INTERVAL=$months"
             val suffix = endCondition.toRRuleSuffix(timeZone)
-            return if (type == 1) {
+            return if (typeE == 1) {
                 val dayOfWeek = firstDay.dayOfWeek.toIcal()
                 val weekIndex = (firstDay.day - 1) / 7 + 1
                 "$base;BYDAY=$weekIndex$dayOfWeek$suffix"
@@ -149,6 +150,7 @@ abstract class RRule {
         override fun toStringImpl(firstDay: LocalDate): String = "Every $months months"
     }
 
+    @Serializable
     data class EveryXWeeks(val weeks: Int, val daysOfWeek: List<DayOfWeek>, override val endCondition: EndCondition) : RRule() {
         override fun asString(firstDay: LocalDate, timeZone: TimeZone): String {
             val days = daysOfWeek.sorted().joinToString(",") { it.toIcal() }
@@ -159,6 +161,7 @@ abstract class RRule {
         }"
     }
 
+    @Serializable
     data class EveryXDays(val days: Int, override val endCondition: EndCondition) : RRule() {
         override fun asString(firstDay: LocalDate, timeZone: TimeZone): String = "FREQ=DAILY;INTERVAL=$days${endCondition.toRRuleSuffix(timeZone)}"
         override fun toStringImpl(firstDay: LocalDate): String = "Every $days days"

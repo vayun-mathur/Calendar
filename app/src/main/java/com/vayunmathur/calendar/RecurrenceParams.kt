@@ -17,9 +17,8 @@ data class RecurrenceParams(
             return when (rr) {
                 is RRule.EveryXDays -> RecurrenceParams("days", rr.days, emptyList(), 0, rr.endCondition)
                 is RRule.EveryXWeeks -> RecurrenceParams("weeks", rr.weeks, rr.daysOfWeek, 0, rr.endCondition)
-                is RRule.EveryXMonths -> RecurrenceParams("months", rr.months, emptyList(), rr.type, rr.endCondition)
+                is RRule.EveryXMonths -> RecurrenceParams("months", rr.months, emptyList(), rr.typeE, rr.endCondition)
                 is RRule.EveryXYears -> RecurrenceParams("years", rr.years, emptyList(), 0, rr.endCondition)
-                else -> null
             }
         }
     }
