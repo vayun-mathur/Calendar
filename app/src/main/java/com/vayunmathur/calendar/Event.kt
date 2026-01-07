@@ -110,7 +110,7 @@ data class Event(
                         end,
                         timezone,
                         allDay,
-                        RRule.parse(rrule)
+                        RRule.parse(rrule, TimeZone.of(timezone))
                     )
                     events.add(event)
                 }

@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.ui
+package com.vayunmathur.calendar.ui.dialog
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -14,6 +14,7 @@ import com.vayunmathur.calendar.vutil.pop
 import kotlin.time.Instant
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import com.vayunmathur.calendar.ui.dialog.TimezonePickerDialog
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.atStartOfDayIn
@@ -22,15 +23,14 @@ import kotlinx.datetime.atStartOfDayIn
 @Composable
 fun CalendarSetDateDialog(backStack: NavBackStack<Route>, dateViewingEpochDays: kotlinx.datetime.LocalDate) {
     val registry = LocalNavResultRegistry.current
-    val tz = TimeZone.currentSystemDefault()
-    val state = rememberDatePickerState(dateViewingEpochDays.atStartOfDayIn(tz).toEpochMilliseconds())
+    val state = rememberDatePickerState(dateViewingEpochDays.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds())
     val scope = rememberCoroutineScope()
     DatePickerDialog(
         onDismissRequest = { backStack.pop() },
         confirmButton = {
             Button(onClick = {
                 val result = Instant.fromEpochMilliseconds(state.selectedDateMillis!!)
-                    .toLocalDateTime(tz).date
+                    .toLocalDateTime(TimeZone.UTC).date
                 scope.launch { registry.dispatchResult("GotoDate", result) }
                 backStack.pop()
             }, enabled = state.selectedDateMillis != null) {

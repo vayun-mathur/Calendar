@@ -34,6 +34,19 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/calendar_glance_widget_info" />
         </receiver>
+        <activity
+            android:name=".ImportActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Calendar"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/calendar" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/ics" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

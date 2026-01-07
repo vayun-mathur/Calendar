@@ -215,7 +215,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
                     var duration = (dtendActual - dtstart).milliseconds
                     if(allDay) duration += 1.days
                     put(CalendarContract.Events.DURATION, duration.toIsoString())
-                    put(CalendarContract.Events.RRULE, rruleObj!!.asString(startDate))
+                    put(CalendarContract.Events.RRULE, rruleObj!!.asString(startDate, TimeZone.of(timezone)))
                 } else {
                     put(CalendarContract.Events.DTEND, dtendActual)
                     // clear DURATION and RRULE if present

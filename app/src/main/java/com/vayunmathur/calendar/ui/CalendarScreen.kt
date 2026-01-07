@@ -69,6 +69,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.format.MonthNames
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
@@ -95,7 +96,6 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
     var dateViewing by remember { mutableStateOf(initialDate) }
 
     // state for which week to show; 0 = current week, +1 = next week, -1 = previous week
-    var weekOffset by remember { mutableStateOf(0) }
 
     // shared vertical scroll so hour labels and grid scroll together
     val verticalState = rememberScrollState()
@@ -103,15 +103,13 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
     ResultEffect<LocalDate>("GotoDate") { result ->
         dateViewing = result
     }
+    val visibleSunday = dateViewing - DatePeriod(days = dateViewing.dayOfWeek.isoDayNumber % 7)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     // show month/year of the currently visible week's Sunday
-                    val daysToSubtract = (dateViewing.dayOfWeek.ordinal - DayOfWeek.SUNDAY.ordinal + 7) % 7
-                    val baseSunday = if (daysToSubtract == 0) dateViewing else dateViewing.minus(DatePeriod(days = daysToSubtract))
-                    val visibleSunday = baseSunday.plus(DatePeriod(days = weekOffset * 7))
                     val mon = MonthNames.ENGLISH_ABBREVIATED.names[visibleSunday.month.number - 1]
                     Row(Modifier.clickable { backStack.add(Route.Calendar.GotoDialog(dateViewing)) }, verticalAlignment = Alignment.CenterVertically) {
                         Text("$mon ${visibleSunday.year}", fontWeight = FontWeight.Bold)
@@ -167,9 +165,9 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                     onDragEnd = {
                         val threshold = 100f // pixels
                         if (dragTotal.value <= -threshold) {
-                            weekOffset += 1
+                            dateViewing += DatePeriod(days = 7)
                         } else if (dragTotal.value >= threshold) {
-                            weekOffset -= 1
+                            dateViewing -= DatePeriod(days = 7)
                         }
                         dragTotal.value = 0f
                     },
@@ -181,7 +179,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
             ) {
 
                 // animate between weekOffset values with a horizontal slide
-                AnimatedContent(targetState = weekOffset, transitionSpec = {
+                AnimatedContent(targetState = visibleSunday, transitionSpec = {
                     val duration = 300
                     if (targetState > initialState) {
                         slideInHorizontally(animationSpec = tween(durationMillis = duration)) { width -> width } + fadeIn() togetherWith
@@ -190,11 +188,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                         slideInHorizontally(animationSpec = tween(durationMillis = duration)) { width -> -width } + fadeIn() togetherWith
                                 slideOutHorizontally(animationSpec = tween(durationMillis = duration)) { width -> width } + fadeOut()
                     }
-                }) { offset ->
-                    // compute week days for this offset
-                    val daysToSubtract = (dateViewing.dayOfWeek.ordinal - DayOfWeek.SUNDAY.ordinal + 7) % 7
-                    val baseSunday = if (daysToSubtract == 0) dateViewing else dateViewing.minus(DatePeriod(days = daysToSubtract))
-                    val sunday = baseSunday.plus(DatePeriod(days = offset * 7))
+                }) { sunday ->
                     val weekDays = (0..6).map { sunday.plus(DatePeriod(days = it)) }
 
                     val weekInstances = Instance.getInstances(context, weekDays.first().atStartOfDayIn(TimeZone.currentSystemDefault()), weekDays.last().atEndOfDayIn(TimeZone.currentSystemDefault()))

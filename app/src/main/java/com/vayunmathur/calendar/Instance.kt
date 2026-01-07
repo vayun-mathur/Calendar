@@ -88,7 +88,8 @@ data class Instance(
                         it.getInt(it.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)) > 0
                     val eventTitle = it.getString(it.getColumnIndexOrThrow(CalendarContract.Instances.TITLE))
                     val color = it.getInt(it.getColumnIndexOrThrow(CalendarContract.Instances.DISPLAY_COLOR))
-                    val rrule = RRule.parse(it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Instances.RRULE)) ?: "")
+                    val rrule = RRule.parse(it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Instances.RRULE)) ?: "",
+                        TimeZone.of(timezone))
 
                     //if (end < start) continue
                     instances.add(Instance(id, eventID, start, end, timezone, allDay, eventTitle, color, rrule))

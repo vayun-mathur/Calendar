@@ -27,7 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.scene.DialogSceneStrategy
 import com.vayunmathur.calendar.ui.CalendarScreen
-import com.vayunmathur.calendar.ui.CalendarSetDateDialog
+import com.vayunmathur.calendar.ui.dialog.CalendarSetDateDialog
 import com.vayunmathur.calendar.ui.EditEventScreen
 import com.vayunmathur.calendar.ui.EventScreen
 import com.vayunmathur.calendar.ui.SettingsAddCalendarDialog
